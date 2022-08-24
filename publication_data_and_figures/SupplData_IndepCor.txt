@@ -1,0 +1,29 @@
+Dataset	comparison	pear_r	t_stat	df	pvalue
+RefSoil	rRNA gene count vs. MCP gene count	0.382263406164986	11.6640458918034	795	3.93821856734652e-29
+RefSoil	transporter gene count vs. transcription factor gene count	0.517964628816665	18.0238134873567	886	4.1242455921471e-62
+RefSoil	transporter gene count vs. osmotic stress response gene count	0.49087361203394	16.7707826203752	886	4.93894785743619e-55
+RefSoil	transporter gene count vs. SMBC count	-0.0776862818886781	-2.31940017646307	886	0.0205999146676089
+Diamond et al. 2019	tRNA gene count vs. MCP gene count	-0.00158081174529358	-0.028366688035211	322	0.977387265282817
+Diamond et al. 2019	transporter gene count vs. transcription factor gene count	0.175864661413482	3.20574208264478	322	0.00148225809031208
+Diamond et al. 2019	transporter gene count vs. osmotic stress response gene count	-0.0327374012009679	-0.587766711935759	322	0.55710085280361
+Diamond et al. 2019	transporter gene count vs. SMBC count	-0.0866769981626812	-1.5612388982255	322	0.119449648221612
+Yu et al. 2020	tRNA gene count vs. MCP gene count	-0.135868645883603	-1.2418588476653	82	0.217828937041999
+Yu et al. 2020	transporter gene count vs. transcription factor gene count	0.368301535300617	3.58727472516074	82	0.00056691228949439
+Yu et al. 2020	transporter gene count vs. osmotic stress response gene count	0.327823085771506	3.14220529607927	82	0.0023335995908279
+Yu et al. 2020	transporter gene count vs. SMBC count	0.0331427428295456	0.300285269056211	82	0.764719536054215
+Wilhelm et al. 2019	tRNA gene count vs. MCP gene count	0.058020826288644	0.887143982620368	233	0.375916177289207
+Wilhelm et al. 2019	transporter gene count vs. transcription factor gene count	0.549392701489379	10.0364698054414	233	6.23801234310228e-20
+Wilhelm et al. 2019	transporter gene count vs. osmotic stress response gene count	0.333829055386793	5.40578991680666	233	1.59408255154754e-07
+Wilhelm et al. 2019	transporter gene count vs. SMBC count	0.141924996447877	2.18854478071086	233	0.029623380569326
+Wilhelm et al. 2021	tRNA gene count vs. MCP gene count	-0.0235427968301195	-0.14893900237871	40	0.882350138070537
+Wilhelm et al. 2021	transporter gene count vs. transcription factor gene count	0.381391369492358	2.60936300214564	40	0.0126989020987655
+Wilhelm et al. 2021	transporter gene count vs. osmotic stress response gene count	0.439398324654353	3.09364659523525	40	0.00359840217431671
+Wilhelm et al. 2021	transporter gene count vs. SMBC count	-0.0761898776275968	-0.483271809073189	40	0.631537637310753
+Zhalnina et al. 2018	tRNA gene count vs. MCP gene count	0.17123083029875	1.02820081413064	35	0.310909058265498
+Zhalnina et al. 2018	transporter gene count vs. transcription factor gene count	0.218734897427435	1.32616713988441	35	0.1933740217805
+Zhalnina et al. 2018	transporter gene count vs. osmotic stress response gene count	0.403413417176866	2.60828358074848	35	0.0132909395471468
+Zhalnina et al. 2018	transporter gene count vs. SMBC count	0.0076141653757826	0.0450473156844204	35	0.964325635867611
+Li et al. 2019	tRNA gene count vs. MCP gene count	0.0969090793679794	0.631012640793886	42	0.531451391094921
+Li et al. 2019	transporter gene count vs. transcription factor gene count	-0.0979267533555166	-0.637702935464879	42	0.527128610929785
+Li et al. 2019	transporter gene count vs. osmotic stress response gene count	0.114972652890567	0.750082001680632	42	0.457386784518516
+Li et al. 2019	transporter gene count vs. SMBC count	-0.00212575040917995	-0.0137764683181193	42	0.989073550754676
