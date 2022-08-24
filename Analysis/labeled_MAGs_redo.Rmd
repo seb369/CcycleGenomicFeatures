@@ -1,0 +1,1091 @@
+---
+title: "Testing relationships between genomic features and C acquisition and growth characteristics in 13C-labeled MAGs"
+author: "Samuel Barnett"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+## Introduction
+The goal of this study is to identify genes that may be indicative of bacterial life history strategies identified in Barnett et al. (2021). This analysis will take MAGs binned from contigs that were enriched in the 13C-treatment microcosms compared to the 12C-control microcosms. These enriched MAGs are putatively 13C labeled and therefore likely from an organisms that actively took up the labeled substrate. I will look to see if genome level genomic investment in features that I predict are indicative of life history strategies are correlated with C acquisition and growth dynamics related to the C-S-R framework.
+
+### Initialization
+```{r, message = FALSE, warning=FALSE}
+# Libraries
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+
+
+# Legend extraction function
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+# Color scheme function from Paul Tol colors
+source("/home/sam/new_repo/paul_tol_colors.R")
+
+# Handy dataframes and lists including read depths and treatment name levels for ordering
+read.depths = data.frame(Microcosm = c("Control_Day01", "Control_Day06", "Control_Day14", "Control_Day30", "Control_Day48",
+                                       "Glucose_Day01", "Xylose_Day06", "Glucose_Day14", "Glycerol_Day14", 
+                                       "Cellulose_Day30", "PalmiticAcid_Day30", "PalmiticAcid_Day48", "Vanillin_Day48"),
+                         n_reads = c(600398782, 537771884, 778966874, 1279583274, 1326945180, 
+                                     818866782, 750644734, 662897402, 685015110, 707180514, 632500566, 602121814, 548508008))
+
+treatment.list = c("Glucose_Day01", "Xylose_Day06", "Glucose_Day14", "Glycerol_Day14", 
+                   "Cellulose_Day30", "PalmiticAcid_Day30", "PalmiticAcid_Day48", "Vanillin_Day48")
+
+treat.read.depths = data.frame(Substrate = c("Glucose", "Xylose", "Glucose", "Glycerol", "Cellulose", "PalmiticAcid", "PalmiticAcid", "Vanillin"),
+                               Day = c(1, 6, 14, 14, 30, 30, 48, 48),
+                               n_reads = c(818866782, 750644734, 662897402, 685015110, 707180514, 632500566, 602121814, 548508008))
+
+treatment_levels = c("Glucose Day 1", "Xylose Day 6", "Glucose Day 14", "Glycerol Day 14", 
+                     "Cellulose Day 30", "PalmiticAcid Day 30", "PalmiticAcid Day 48", "Vanillin Day 48")
+```
+
+### Data import and merging
+
+#### Bin IDs with quality from metaWRAP/checkM
+```{r, message = FALSE, warning=FALSE}
+# Import Bins qualities. There is a separate stats file for each run of metawrap (each treatment)
+bins_quality.df = data.frame()
+for (treat in treatment.list){
+  bin_file = paste("/home/sam/FullCyc_metagenome/enriched_binning/", treat, "/", treat, "_metaWRAP_refinement/metawrap_50_10_bins.stats", sep="")
+  sub.bins_quality.df = read.table(bin_file, sep="\t", header=TRUE, stringsAsFactors = FALSE) %>%
+    mutate(Bin_treatment = treat)
+  bins_quality.df = rbind(bins_quality.df, sub.bins_quality.df)
+}
+
+bins_quality.df = bins_quality.df %>%
+  rename(Bin_number = bin) %>%
+  mutate(Bin_treatment = factor(Bin_treatment, levels=treatment.list),
+         BinID = paste(Bin_treatment, Bin_number, sep="_")) %>%
+  arrange(Bin_treatment, Bin_number)
+
+bins_quality.df$BinID = factor(bins_quality.df$BinID, levels=bins_quality.df$BinID)
+
+# How do they look?
+kable(bins_quality.df %>% arrange(-completeness))
+```
+
+#### Contigs found in each bin
+```{r, message = FALSE, warning=FALSE}
+# Get list of contigs from each bin
+bins.df = data.frame()
+for (treat in treatment.list){
+  bin_file = paste("/home/sam/FullCyc_metagenome/enriched_binning/", treat, "/", treat, "_metaWRAP_refinement/metawrap_50_10_bins.contigs", sep="")
+  sub.bins = read.table(bin_file, sep="\t", header=FALSE, stringsAsFactors = FALSE) %>%
+    rename(contigName = V1, BinID = V2) %>%
+    mutate(Bin_treatment = treat,
+           Bin_number = BinID) %>%
+    mutate(BinID = paste(Bin_treatment, Bin_number, sep="_"))
+  bins.df = rbind(bins.df, sub.bins)
+  sub.bins = NULL
+}
+
+```
+
+#### Bin coverage across all samples
+
+```{r, message = FALSE, warning=FALSE}
+## Get contig coverages for the contigs found in the bins (Calculated using metabat's method)
+coverages.df = read.table("/home/sam/FullCyc_metagenome/binning_1000/metabat/FullCyc_1000_depths.txt",
+                          header=TRUE, sep="\t", stringsAsFactors = FALSE) %>%
+  filter(contigName %in% unique(bins.df$contigName)) %>%
+  rename(Control_Day01 = Control_Day1_mapped.sorted.bam,
+         Control_Day06 = Control_Day6_mapped.sorted.bam, 
+         Control_Day14 = Control_Day14_mapped.sorted.bam,
+         Control_Day30 = Control_Day30_mapped.sorted.bam, 
+         Control_Day48 = Control_Day48_mapped.sorted.bam, 
+         Glucose_Day01  = Glucose_Day1_mapped.sorted.bam, 
+         Xylose_Day06 = Xylose_Day6_mapped.sorted.bam,
+         Glucose_Day14 = Glucose_Day14_mapped.sorted.bam, 
+         Glycerol_Day14 = Glycerol_Day14_mapped.sorted.bam,
+         Cellulose_Day30 = Cellulose_Day30_mapped.sorted.bam, 
+         PalmiticAcid_Day30 = PalmiticAcid_Day30_mapped.sorted.bam,
+         PalmiticAcid_Day48 = PalmiticAcid_Day48_mapped.sorted.bam, 
+         Vanillin_Day48 = Vanillin_Day48_mapped.sorted.bam) %>%
+  select(contigName, contigLen, Control_Day01, Control_Day06, Control_Day14, Control_Day30, Control_Day48, 
+         Glucose_Day01, Xylose_Day06, Glucose_Day14, Glycerol_Day14, 
+         Cellulose_Day30, PalmiticAcid_Day30, PalmiticAcid_Day48, Vanillin_Day48) %>%
+  tidyr::gather(key=Microcosm, value=Coverage, -contigName, -contigLen) %>%
+  left_join(read.depths, by="Microcosm") %>%
+  mutate(norm_coverage = (Coverage/n_reads)*500000000) %>%
+  select(contigName, contigLen, Microcosm, norm_coverage) %>%
+  mutate(Sample_type = ifelse(grepl("Control", Microcosm), "Control", "Treatment"))
+
+# Calculate coverage fold change between control and treatments
+con_cov.df = coverages.df %>%
+  filter(Sample_type == "Control") %>%
+  rename(Control_cov = norm_coverage) %>%
+  mutate(Day = as.numeric(as.character(gsub("Control_Day", "", Microcosm)))) %>%
+  select(contigName, Day, Control_cov)
+
+contig_cov_diff.df = coverages.df %>%
+  filter(Sample_type == "Treatment") %>%
+  rename(Treatment_cov = norm_coverage) %>%
+  tidyr::separate(Microcosm, into=c("Substrate", "Day"), sep="_Day", convert=TRUE) %>%
+  select(contigName, contigLen, Substrate, Day, Treatment_cov) %>%
+  left_join(con_cov.df, by=c("contigName", "Day")) %>%
+  mutate(FC_cov = Treatment_cov/Control_cov)
+
+# Clean up environment
+coverages.df = NULL
+con_cov.df = NULL
+```
+
+Merge coverages with bin IDs
+```{r, message = FALSE, warning=FALSE}
+# Merge contig coverage dataframe with dataframe linking contigs to bins
+bin_contig_cov.df = contig_cov_diff.df %>%
+  inner_join(bins.df, by="contigName")
+
+# Clean up environment
+contig_cov_diff.df = NULL
+
+```
+
+#### Bin taxonomy from GTDBtk
+```{r, message = FALSE, warning=FALSE}
+# I had to split up the GTDBtk runs so I need a list to get the directories where the results are from
+GTDBtk_directories = c("Glucose_Day01", "Xylose_Day06", "Glucose_Day14", "Glycerol_Day14", 
+                       "Cellulose_Day30_S1", "Cellulose_Day30_S2", "Cellulose_Day30_S3", "Cellulose_Day30_S4",
+                       "PalmiticAcid_Day30_S1", "PalmiticAcid_Day30_S2", "PalmiticAcid_Day30_S3", "PalmiticAcid_Day30_S4",
+                       "PalmiticAcid_Day48", "Vanillin_Day48")
+
+# get the taxonomy dataframes and merge them all together
+bin_tax_full.df = data.frame()
+for (dir in GTDBtk_directories){
+  sub.tax = read.table(paste("/home/sam/FullCyc_metagenome/enriched_binning/taxonomy_GTDBtk/",
+                             dir, "/classify/gtdbtk.bac120.summary.tsv", sep=""), 
+                       header=TRUE, sep="\t", stringsAsFactors = FALSE) %>%
+    rename(Bin_number = user_genome) %>%
+    mutate(Bin_treatment = gsub("_S.", "", dir)) %>%
+    mutate(BinID = paste(Bin_treatment, Bin_number, sep="_"))
+  bin_tax_full.df = rbind(bin_tax_full.df, sub.tax)
+  sub.tax = NULL
+}
+kable(bin_tax_full.df)
+
+# Shorten to just the predicted taxonomy
+bin_tax.df = bin_tax_full.df %>%
+  select(BinID, Bin_number, Bin_treatment, classification) %>%
+  mutate(classification = gsub(".__", "", classification)) %>%
+  tidyr::separate(classification, into=c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species"), sep=";")
+
+```
+
+#### Binned contig gene annotations
+I also need the annotations for the contigs found in the bins.
+```{r, message = FALSE, warning=FALSE}
+# Get mapping of contigs to IMG contig names
+scaffolds.df = read.table("/home/sam/FullCyc_metagenome/annotation/IMG/Ga0334612_contig_names_mapping.tsv", sep="\t", header=FALSE, stringsAsFactors = FALSE) %>%
+  rename(contigName = V1, Scaffold = V2) %>%
+  filter(contigName %in% unique(bin_contig_cov.df$contigName))
+
+# Get table of bin gene annotations
+bin_annotation.df = read.table("/home/sam/FullCyc_metagenome/annotation/IMG/Ga0334612_product_names.tsv", 
+                            sep="\t", quote="", header=FALSE, stringsAsFactors = FALSE) %>%
+  rename(geneID = V1, product = V2, prod_group = V3) %>%
+  tidyr::separate(geneID, into=c("Project", "Scaffold", "start", "end"), sep="_", remove=FALSE) %>%
+  mutate(Scaffold = paste(Project, Scaffold, sep="_")) %>%
+  select(-Project) %>%
+  filter(Scaffold %in% unique(scaffolds.df$Scaffold)) %>%
+  inner_join(scaffolds.df, by = "Scaffold") %>%
+  inner_join(bins.df, by="contigName")
+
+# Clean up environment
+scaffolds.df = NULL
+
+```
+
+
+## Initial look
+
+Before looking at specific genes and families, I'll take a look a the quality of the bins, number of genes, enrichment dynamics etc.
+
+### Bin quality stats
+
+#### Quality across bins
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=7}
+# Plot the completeness and contamination across the bins
+completeness.plot = ggplot(data=bins_quality.df, aes(x=BinID, y=completeness))+
+  geom_bar(stat="identity") +
+  labs(x="Bin ID", y="Completeness (%)") +
+  theme_bw() +
+  theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank())
+contamination.plot = ggplot(data=bins_quality.df, aes(x=BinID, y=contamination))+
+  geom_bar(stat="identity") +
+  labs(x="Bin ID", y="Contamination (%)") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=45, hjust=1))
+
+comb_quality.plot = cowplot::plot_grid(completeness.plot, contamination.plot,
+                                       ncol=1, align="v", rel_heights = c(0.7, 1))
+comb_quality.plot
+```
+
+#### Quality stats vs number of genes annotated
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=7}
+# Compare the number of genes annotated with various quality stats
+qual_bin_annotation.sum = bin_annotation.df %>%
+  mutate(BinID = factor(BinID, levels=levels(bins_quality.df$BinID))) %>%
+  group_by(BinID) %>%
+  summarize(n_genes = n()) %>%
+  as.data.frame %>%
+  inner_join(bins_quality.df, by="BinID")
+
+# Plot
+completeness_ngenes.plot = ggplot(data=qual_bin_annotation.sum, aes(x=completeness, y=n_genes)) +
+  geom_point() +
+  labs(x="Completeness (%)", y="Number of genes annotated") +
+  theme_bw()
+contamination_ngenes.plot = ggplot(data=qual_bin_annotation.sum, aes(x=contamination, y=n_genes)) +
+  geom_point() +
+  labs(x="Contamination (%)", y="Number of genes annotated") +
+  theme_bw()
+N50_ngenes.plot = ggplot(data=qual_bin_annotation.sum, aes(x=N50, y=n_genes)) +
+  geom_point() +
+  labs(x="N50", y="Number of genes annotated") +
+  theme_bw()
+size_ngenes.plot = ggplot(data=qual_bin_annotation.sum, aes(x=size, y=n_genes)) +
+  geom_point() +
+  labs(x="Bin size (bp)", y="Number of genes annotated") +
+  theme_bw()
+
+comb_qual_ngenes.plot = cowplot::plot_grid(size_ngenes.plot, N50_ngenes.plot,
+                                           completeness_ngenes.plot, contamination_ngenes.plot,
+                                           nrow=2, ncol=2, align="h", labels=c("A", "B", "C", "D"))
+comb_qual_ngenes.plot
+
+```
+
+## Genome features
+```{r, message = FALSE, warning=FALSE}
+# Import both gram + and gram - predictions
+gram_neg_signalp.df = read.table("/home/sam/FullCyc_metagenome/annotation/signalp_annotation/Ga0334612_proteins_gram_neg_summary.signalp5", 
+                            sep="\t", quote="", header=TRUE, stringsAsFactors = FALSE, comment.char = "") %>%
+  filter(Prediction != "OTHER") %>%
+  rename(geneID = X..ID) %>%
+  tidyr::separate(geneID, into=c("Project", "Scaffold", "start", "end"), sep="_", remove=FALSE) %>%
+  mutate(Scaffold = paste(Project, Scaffold, sep="_")) %>%
+  select(geneID, Scaffold, Prediction) %>%
+  rename(gramNEG_prediction = Prediction)
+  
+gram_pos_signalp.df = read.table("/home/sam/FullCyc_metagenome/annotation/signalp_annotation/Ga0334612_proteins_gram_pos_summary.signalp5", 
+                            sep="\t", quote="", header=TRUE, stringsAsFactors = FALSE, comment.char = "") %>%
+  filter(Prediction != "OTHER") %>%
+  rename(geneID = X..ID) %>%
+  tidyr::separate(geneID, into=c("Project", "Scaffold", "start", "end"), sep="_", remove=FALSE) %>%
+  mutate(Scaffold = paste(Project, Scaffold, sep="_")) %>%
+  select(geneID, Scaffold, Prediction) %>%
+  rename(gramPOS_prediction = Prediction)
+
+signalp_full.df = full_join(gram_neg_signalp.df, gram_pos_signalp.df) %>%
+  filter(geneID %in% unique(bin_annotation.df$geneID))
+
+gram_neg_signalp.df = NULL
+gram_pos_signalp.df = NULL
+
+```
+
+```{r, message = FALSE, warning=FALSE}
+# Chemotaxis
+chemotaxis.sum = bin_annotation.df %>%
+  group_by(BinID) %>%
+  mutate(total_genes = n()) %>%
+  ungroup %>%
+  mutate(product_lower = tolower(product)) %>%
+  filter(grepl("methyl-accepting chemotaxis protein", product_lower)) %>%
+  group_by(BinID, total_genes) %>%
+  summarize(n_chemotaxis = n()) %>%
+  ungroup %>%
+  mutate(perc_chemotaxis = n_chemotaxis/total_genes*100)
+
+# Transport proteins
+transmembrane.df = read.table("/home/sam/FullCyc_metagenome/annotation/transmembrane/TMHMM_table_10_20_20.txt", sep="\t", header=TRUE)
+transport_grep_str = "transporter|channel|exchanger|symporter|antiporter|exporter|importer|ATPase|pump"
+
+transport.sum = bin_annotation.df %>%
+  group_by(BinID) %>%
+  mutate(total_genes = n()) %>%
+  ungroup %>%
+  mutate(product_lower = tolower(product)) %>%
+  filter(grepl(transport_grep_str, product_lower)) %>%
+  inner_join(transmembrane.df, by="geneID") %>%
+  group_by(BinID, total_genes) %>%
+  summarize(n_transport = n()) %>%
+  ungroup %>%
+  mutate(perc_transport = n_transport/total_genes*100)
+
+# Adhesion proteins
+adhesion_products = c("holdfast attachment protein HfaA", "curli production assembly/transport component CsgG/holdfast attachment protein HfaB",
+                      "adhesin/invasin", "fibronectin-binding autotransporter adhesin", "surface adhesion protein", "autotransporter adhesin",
+                      "adhesin HecA-like repeat protein", "ABC-type Zn2+ transport system substrate-binding protein/surface adhesin",
+                      "large exoprotein involved in heme utilization and adhesion", "Tfp pilus tip-associated adhesin PilY1", 
+                      "type V secretory pathway adhesin AidA")
+
+adhesion.sum = bin_annotation.df %>%
+  group_by(BinID) %>%
+  mutate(total_genes = n()) %>%
+  ungroup %>%
+  filter(product %in% adhesion_products) %>%
+  inner_join(transmembrane.df, by="geneID") %>%
+  group_by(BinID, total_genes) %>%
+  summarize(n_adhesion = n()) %>%
+  ungroup %>%
+  mutate(perc_adhesion = n_adhesion/total_genes*100)
+
+# Transcription factors
+transfact_grep_str = "transcriptional regulator|transcriptional repressor|transcriptional activator|transcription factor|transcriptional regulation|transcription regulator|transcriptional.*regulator"
+
+TF.df = read.table("/home/sam/FullCyc_metagenome/annotation/deepTfactor/deepTfactor_output/Ga0334612_proteins.TFs/prediction_result.txt", 
+                   sep="\t", header=TRUE, stringsAsFactors = FALSE) %>%
+  filter(prediction == "True") %>%
+  filter(sequence_ID %in% unique(bin_annotation.df$geneID))
+
+transfact.sum = bin_annotation.df %>%
+  group_by(BinID) %>%
+  mutate(total_genes = n()) %>%
+  ungroup %>%
+  mutate(product_lower = tolower(product)) %>%
+  filter(grepl(transfact_grep_str, product_lower) | geneID %in% TF.df$sequence_ID) %>%
+  group_by(BinID, total_genes) %>%
+  summarize(n_transfact = n()) %>%
+  ungroup %>%
+  mutate(perc_transfact = n_transfact/total_genes*100)
+
+
+# Osmotic stress
+osmostress_grep_str = "osmoregulated|osmoprotectant|osmotically-inducible|osmo-dependent|osmolarity sensor|ompr|l-ectoine synthase"
+
+osmostress.sum = bin_annotation.df %>%
+  group_by(BinID) %>%
+  mutate(total_genes = n()) %>%
+  ungroup %>%
+  mutate(product_lower = tolower(product)) %>%
+  filter(grepl(osmostress_grep_str, product_lower)) %>%
+  group_by(BinID, total_genes) %>%
+  summarize(n_osmostress = n()) %>%
+  ungroup %>%
+  mutate(perc_osmostress = n_osmostress/total_genes*100)
+
+# Dormancy
+#spore_grep_str = "Spo0A"
+resuscitation = "RpfC"
+tox_antitox = "HipA|HipB|mRNA interferase MazF|antitoxin MazE|MazEF|RelB|RelE|RelBE|DinJ|YafQ"
+
+dormancy.sum = bin_annotation.df %>%
+  group_by(BinID) %>%
+  mutate(total_genes = n()) %>%
+  ungroup %>%
+  filter(grepl(tox_antitox, product) | grepl(resuscitation, product)) %>%
+  group_by(BinID, total_genes) %>%
+  summarize(n_dormancy = n()) %>%
+  ungroup %>%
+  mutate(perc_dormancy = n_dormancy/total_genes*100)
+
+
+# Secreted enzymes
+signalp_proteases.df = read.table("/home/sam/FullCyc_metagenome/annotation/secreted_protein_annotations/secreted_proteases.txt", sep="\t", stringsAsFactors = FALSE)
+colnames(signalp_proteases.df) = c("Query", "Target", "perc_ident", "align_length", "n_mismatch", "n_gaps", 
+                                "query_start", "query_end", "target_start", "target_end", "E_value", "bit_score")
+signalp_proteases.sum = signalp_proteases.df %>%
+  group_by(Query) %>%
+  summarize(n_match = n(),
+            max_perc_ident = max(perc_ident),
+            min_perc_ident = min(perc_ident))
+
+signalp_CAZymes.df = read.table("/home/sam/FullCyc_metagenome/annotation/secreted_protein_annotations/secreted_CAZymes.out.dm.ps.stringent", 
+                                sep="\t", stringsAsFactors = FALSE)
+colnames(signalp_CAZymes.df) = c("Target", "target_length", "Query", "query_length", "E_value", "V6", "V7", "V8", "V9", "V10")
+signalp_CAZymes.sum = signalp_CAZymes.df %>%
+  group_by(Query, Target) %>%
+  summarize(n_match = n(),
+            max_E_value = max(E_value),
+            min_E_value = min(E_value)) %>%
+  filter(grepl("GH|PL|CE", Target))
+
+signalp_ABhydro.df = read.table("/home/sam/FullCyc_metagenome/annotation/secreted_protein_annotations/secreted_ABhydro.out.dm.ps.stringent", 
+                                sep="\t", stringsAsFactors = FALSE)
+colnames(signalp_ABhydro.df) = c("Target", "target_length", "Query", "query_length", "E_value", "V6", "V7", "V8", "V9", "V10")
+signalp_ABhydro.sum = signalp_ABhydro.df %>%
+  group_by(Query, Target) %>%
+  summarize(n_match = n(),
+            max_E_value = max(E_value),
+            min_E_value = min(E_value))
+
+secenzy.sum = bin_annotation.df %>%
+  group_by(BinID) %>%
+  mutate(total_genes = n()) %>%
+  ungroup %>%
+  left_join(signalp_full.df, by = c("geneID", "Scaffold")) %>%
+  left_join(select(bin_tax.df, BinID, Phylum), by="BinID") %>%
+  mutate(sec_signal = ifelse(Phylum %in% c("Actinobacteriota", "Firmicutes"), gramPOS_prediction, gramNEG_prediction)) %>%
+  mutate(protease = ifelse(geneID %in% signalp_proteases.sum$Query, "Yes", "No"),
+         CAZy = ifelse(geneID %in% signalp_CAZymes.sum$Query, "Yes", "No"),
+         ABhydro = ifelse(geneID %in% signalp_ABhydro.sum$Query, "Yes", "No")) %>%
+  filter(!(is.na(sec_signal)),
+         protease == "Yes" | CAZy == "Yes" | ABhydro == "Yes") %>%
+  group_by(BinID, total_genes) %>%
+  summarize(n_secenzy = n()) %>%
+  ungroup %>%
+  mutate(perc_secenzy = n_secenzy/total_genes*100)
+
+## SMBCs
+antismash.df = read.table("/home/sam/FullCyc_metagenome/annotation/antismash/antismash_BCGtable.tsv", header=TRUE, sep="\t") %>%
+  rename(smbc_product = product)
+
+SMBC.sum = left_join(bin_annotation.df, antismash.df, by="Scaffold") %>%
+  group_by(BinID) %>%
+  mutate(total_genes = n()) %>%
+  ungroup %>%
+  filter(!(is.na(smbc_product))) %>%
+  select(BinID, contigName, smbc_product, total_genes) %>%
+  unique %>%
+  group_by(BinID, total_genes) %>%
+  summarize(n_SMBCs = n()) %>%
+  ungroup %>%
+  mutate(rel_n_SMBCs = n_SMBCs/total_genes)
+
+# Combine them all together
+genome_feat.sum = full_join(chemotaxis.sum, transport.sum, by = c("BinID", "total_genes")) %>%
+  full_join(transfact.sum, by = c("BinID", "total_genes")) %>%
+  full_join(osmostress.sum, by = c("BinID", "total_genes")) %>%
+  full_join(dormancy.sum, by = c("BinID", "total_genes")) %>%
+  full_join(secenzy.sum, by = c("BinID", "total_genes")) %>%
+  full_join(adhesion.sum, by = c("BinID", "total_genes")) %>%
+  full_join(SMBC.sum, by = c("BinID", "total_genes"))
+genome_feat.sum[is.na(genome_feat.sum)] <- 0
+  
+```
+
+See how these genomic features differentiate MAGS
+
+```{r, message = FALSE, warning=FALSE}
+genome_feat.mat = genome_feat.sum %>%
+  select(BinID, n_chemotaxis, n_transport, n_transfact, n_osmostress, 
+         n_dormancy, n_secenzy, n_adhesion, n_SMBCs) %>%
+  #select(BinID, n_chemotaxis, n_transport, n_secenzy, n_osmostress) %>%
+  tibble::column_to_rownames(var="BinID") %>%
+  as.matrix
+
+genome_feat.pca = prcomp(genome_feat.mat, scale=TRUE)
+summary(genome_feat.pca)
+
+genome_feat.pca.points.df = data.frame(genome_feat.pca$x) %>%
+  tibble::rownames_to_column(var="BinID")
+
+genome_feat.pca.features.df = data.frame(genome_feat.pca$rotation) %>%
+  tibble::rownames_to_column(var="Feature") %>%
+  mutate(PC1_adj = PC1*genome_feat.pca$sdev[1],
+         PC2_adj = PC2*genome_feat.pca$sdev[2]) %>%
+  mutate(PC1_cos2 = PC1_adj^2,
+         PC2_cos2 = PC2_adj^2) %>%
+  mutate(PC1_cont = (PC1_cos2*100)/sum(PC1_cos2),
+         PC2_cont = (PC2_cos2*100)/sum(PC2_cos2))
+
+genome_feat.pca.var.df = data.frame(summary(genome_feat.pca)$importance)
+
+genome_feat.pca.plot = ggplot(data=genome_feat.pca.points.df, aes(x=PC1, y=PC2)) +
+  geom_point(size=5, shape=21, aes(fill=BinID)) +
+  geom_segment(data=genome_feat.pca.features.df, x=0, y=0, aes(xend=PC1_adj, yend=PC2_adj), arrow = arrow(length = unit(0.03, "npc"))) +
+  geom_text(data=genome_feat.pca.features.df, aes(x=PC1_adj, y=PC2_adj, label=Feature), size=8*5/14) +
+  geom_text(data=genome_feat.pca.points.df, aes(label=BinID), size=8*5/14) +
+  #scale_fill_manual(values=treatment.col) +
+  labs(x=paste("PC1 (variance explained = ", round(genome_feat.pca.var.df[2,1], digits = 3)*100, "%)", sep=""),
+       y=paste("PC2 (variance explained = ", round(genome_feat.pca.var.df[2,2], digits = 3)*100, "%)", sep="")) +
+  theme_bw() +
+  theme(axis.title = element_text(size=8),
+        axis.text = element_text(size=7),
+        legend.position = "none")
+genome_feat.pca.plot
+
+```
+
+## Matching MAGs to OTUs in FullCyc1
+
+```{r, message = FALSE, warning=FALSE}
+# Dataframe for converting microcosm name into substrate and day
+treat_conversions = data.frame(Sub = c("13C-Glu", "13C-Xyl", "13C-Gly", "13C-Cel", "13C-Pal", "13C-Van", "13C-Oxa", "13C-Lac", "13C-Ami"),
+                               Substrate = c("Glucose", "Xylose", "Glycerol", "Cellulose", "Palmitic acid", "Vanillin", "Oxalate", "Lactate", "Amino acids"))
+
+# Assimilation/population characteristics and incorporator data
+FullCyc1_incorp.df = read.table("/home/sam/FullCyc_metagenome/OTU_AC_characteristics.txt", 
+                                sep="\t", header=TRUE, stringsAsFactors = FALSE)
+```
+
+```{r, message = FALSE, warning=FALSE}
+treatment_levels = c("Glucose Day 1", "Xylose Day 6", "Glucose Day 14", "Glycerol Day 14", 
+                     "Cellulose Day 30", "Palmitic Acid Day 30", "Palmitic Acid Day 48", "Vanillin Day 48")
+
+Potential_matching_OTUs.df = rbind(data.frame(BinID = "Glucose_Day01_bin.1", 
+                                              unique(filter(FullCyc1_incorp.df, Family == "Burkholderiaceae", grepl("13C-Glu_D1", Substrate_incorp_on_day))), 
+                                              Level = "Family", Taxa = "Burkholderiaceae"),
+                                   data.frame(BinID = "Xylose_Day06_bin.1",
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Pseudomonas", grepl("13C-Xyl_D6", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Pseudomonas"),
+                                   data.frame(BinID = "Glucose_Day14_bin.1",
+                                              unique(filter(FullCyc1_incorp.df, Family == "Streptomyces", grepl("13C-Glu_D14", Substrate_incorp_on_day))),
+                                              Level = "Genus", Taxa = "Streptomyces"),
+                                   data.frame(BinID = "Glucose_Day14_bin.2",
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Polyangiaceae", grepl("13C-Glu_D14", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Polyangiaceae"),
+                                   data.frame(BinID = "Glycerol_Day14_bin.1",
+                                              unique(filter(FullCyc1_incorp.df, Family == "Streptomyces", grepl("13C-Gly_D14", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Streptomyces"),
+                                   data.frame(BinID = "Cellulose_Day30_bin.1",
+                                              unique(filter(FullCyc1_incorp.df, Family == "Streptomyces", grepl("13C-Cel_D30", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Streptomyces"),
+                                   data.frame(BinID = "Cellulose_Day30_bin.2",
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Flavihumibacter", grepl("13C-Cel_D30", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Flavihumibacter"),
+                                   #data.frame(BinID = "Cellulose_Day30_bin.7",
+                                  #            unique(filter(FullCyc1_incorp.df, Genus == "Myxococcaceae", grepl("13C-Cel_D30", Substrate_incorp_on_day))), 
+                                  #            Level = "Genus", Taxa = "Myxococcaceae"),
+                                   data.frame(BinID = "Cellulose_Day30_bin.10",
+                                              unique(filter(FullCyc1_incorp.df, Family == "Planctomycetaceae", grepl("13C-Cel_D30", Substrate_incorp_on_day))), 
+                                              Level = "Family", Taxa = "Planctomycetaceae"),
+                                   data.frame(BinID = "Cellulose_Day30_bin.5",
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Caulobacter", grepl("13C-Cel_D30", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Caulobacter"),
+                                   data.frame(BinID = "Cellulose_Day30_bin.6", 
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Haliangiaceae", grepl("13C-Cel_D30", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Haliangiaceae"),
+                                   data.frame(BinID = "Cellulose_Day30_bin.9",
+                                              unique(filter(FullCyc1_incorp.df, Class == "Verrucomicrobiae", grepl("13C-Cel_D30", Substrate_incorp_on_day))), 
+                                              Level = "Class", Taxa = "Verrucomicrobiae"),
+                                   data.frame(BinID = "Cellulose_Day30_bin.8",
+                                              unique(filter(FullCyc1_incorp.df, Order == "Cytophagales", grepl("13C-Cel_D30", Substrate_incorp_on_day))), 
+                                              Level = "Order", Taxa = "Cytophagales"),
+                                   data.frame(BinID = "Cellulose_Day30_bin.4",
+                                              unique(filter(FullCyc1_incorp.df, Phylum == "Planctomycetes", grepl("13C-Cel_D30", Substrate_incorp_on_day))), 
+                                              Level = "Phylum", Taxa = "Planctomycetes"),
+                                   data.frame(BinID = "PalmiticAcid_Day30_bin.1",
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Caulobacter", grepl("13C-Pal_D30", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Caulobacter"),
+                                   data.frame(BinID = "PalmiticAcid_Day30_bin.3",
+                                              unique(filter(FullCyc1_incorp.df, Order == "Bdellovibrionales", grepl("13C-Pal_D30", Substrate_incorp_on_day))), 
+                                              Level = "Order", Taxa = "Bdellovibrionales"),
+                                   data.frame(BinID = "PalmiticAcid_Day30_bin.6",
+                                              unique(filter(FullCyc1_incorp.df, Order == "Cytophagales", grepl("13C-Pal_D30", Substrate_incorp_on_day))), 
+                                              Level = "Order", Taxa = "Cytophagales"),
+                                   data.frame(BinID = "PalmiticAcid_Day30_bin.5",
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Planctomyces", grepl("13C-Pal_D30", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Planctomyces"),
+                                   data.frame(BinID = "PalmiticAcid_Day30_bin.4",
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Flavihumibacter", grepl("13C-Pal_D30", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Flavihumibacter"),
+                                   data.frame(BinID = "PalmiticAcid_Day30_bin.7",
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Hydrogenophaga", grepl("13C-Pal_D30", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Hydrogenophaga"),
+                                   data.frame(BinID = "PalmiticAcid_Day30_bin.9",
+                                              unique(filter(FullCyc1_incorp.df, Class == "Alphaproteobacteria", grepl("13C-Pal_D30", Substrate_incorp_on_day))),
+                                              Level = "Class", Taxa = "Alphaproteobacteria"),
+                                   #data.frame(BinID = "PalmiticAcid_Day48_bin.4",
+                                  #            unique(filter(FullCyc1_incorp.df, Genus == "Hydrogenophaga", grepl("13C-Pal_D48", Substrate_incorp_on_day))), 
+                                  #            Level = "Genus", Taxa = "Hydrogenophaga"),
+                                   data.frame(BinID = "PalmiticAcid_Day48_bin.3",
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Haliangiaceae", grepl("13C-Pal_D48", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Haliangiaceae"),
+                                   data.frame(BinID = "PalmiticAcid_Day48_bin.5",
+                                              unique(filter(FullCyc1_incorp.df, Phylum == "Acidobacteria", grepl("13C-Pal_D48", Substrate_incorp_on_day))), 
+                                              Level = "Phylum", Taxa = "Acidobacteria"),
+                                   data.frame(BinID = "PalmiticAcid_Day48_bin.2",
+                                              unique(filter(FullCyc1_incorp.df, Genus == "Planctomyces", grepl("13C-Pal_D48", Substrate_incorp_on_day))), 
+                                              Level = "Genus", Taxa = "Planctomyces"),
+                                   data.frame(BinID = "PalmiticAcid_Day48_bin.1",
+                                              unique(filter(FullCyc1_incorp.df, Phylum == "Planctomycetes", grepl("13C-Pal_D48", Substrate_incorp_on_day))), 
+                                              Level = "Phylum", Taxa = "Planctomycetes")) %>%
+                                   #data.frame(BinID = "Vanillin_Day48_bin.1",
+                                  #            unique(filter(FullCyc1_incorp.df, Genus == "Myxococcaceae", grepl("13C-Van_D48", Substrate_incorp_on_day))), 
+                                  #            Level = "Genus", Taxa = "Myxococcaceae")) %>%
+  mutate(Treatment = factor(gsub("Acid", " Acid", gsub("Day", "Day ", gsub("Day0", "Day", gsub("_", " ", gsub("_bin.*", "", BinID))))),
+                            levels = treatment_levels),
+         BinID = as.character(BinID)) %>%
+  arrange(Treatment, BinID)
+
+Potential_matching_OTUs.df = Potential_matching_OTUs.df %>%
+  mutate(BinID = factor(BinID, levels = unique(Potential_matching_OTUs.df$BinID)))
+
+print("Missing matching OTUs")
+"Cellulose_Day30_bin.7"
+"PalmiticAcid_Day48_bin.4"
+"Vanillin_Day48_bin.1"
+
+write.table(Potential_matching_OTUs.df, file="/home/sam/FullCyc_metagenome/figs4publication/SupplData_MAG_OTUs.txt", sep="\t", quote=FALSE, row.names = FALSE)
+
+```
+
+
+
+
+
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=7}
+treatment_levels = c("Glucose Day 1", "Xylose Day 6", "Glucose Day 14", "Glycerol Day 14", 
+                     "Cellulose Day 30", "Palmitic Acid Day 30", "Palmitic Acid Day 48", "Vanillin Day 48")
+
+treatment.col = paultol_colors(8)
+names(treatment.col) = treatment_levels
+
+
+Potential_matching_OTUs.forplot = Potential_matching_OTUs.df %>%
+  group_by(BinID) %>%
+  mutate(n_OTU = n()) %>%
+  ungroup %>%
+  select(BinID, OTU, n_OTU, mean_bioA, maxl2fc, mean_immediacy, Treatment) %>%
+  rename("C source bioavailability" = mean_bioA, "Maximum log2 fold change" = maxl2fc, "C assimilation latency" = mean_immediacy) %>%
+  tidyr::gather(key="Characteristic", value="measure", -BinID, -OTU, -n_OTU, -Treatment)
+
+Potential_matching_OTUs.forplot.sum = Potential_matching_OTUs.forplot %>%
+  group_by(BinID, n_OTU, Characteristic, Treatment) %>%
+  summarize(mean_measure = mean(measure)) %>%
+  ungroup
+
+Potential_matching_OTUs.plot = ggplot(data=Potential_matching_OTUs.forplot, aes(x=BinID, y=measure)) +
+  geom_jitter(size=0.5, width = 0.25) +
+  #geom_boxplot(data=filter(Potential_matching_OTUs.forplot, n_OTU >= 5), aes(fill=Characteristic), alpha=0.5, outlier.shape = NA, width=0.25) +  
+  geom_boxplot(data=Potential_matching_OTUs.forplot, aes(fill=Treatment), alpha=0.5, outlier.shape = NA, width=0.5) +  
+  geom_point(data=Potential_matching_OTUs.forplot.sum, aes(x=BinID, y=mean_measure), shape=124, color="red", size=5) +
+  scale_fill_manual(values=treatment.col) +
+  labs(x="MAG") +
+  theme_bw() + 
+  theme(axis.text = element_text(size=7),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=8),
+        strip.placement = "outside",
+        strip.background = element_blank(),
+        legend.position = "none") +
+  coord_flip() +
+  facet_wrap(~Characteristic, nrow=1, scales = "free_x", strip.position = "bottom")
+Potential_matching_OTUs.plot
+
+ggsave(Potential_matching_OTUs.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS7.tiff", 
+       device = "tiff", width = 7, height = 7, units = "in")
+
+```
+
+## Correlations
+
+```{r, message = FALSE, warning=FALSE}
+treatment_levels = c("Glucose Day 1", "Xylose Day 6", "Glucose Day 14", "Glycerol Day 14", 
+                     "Cellulose Day 30", "Palmitic Acid Day 30", "Palmitic Acid Day 48", "Vanillin Day 48")
+
+treatment.col = paultol_colors(8)
+names(treatment.col) = treatment_levels
+
+Potential_matching_OTUs.means = Potential_matching_OTUs.df %>%
+  group_by(BinID) %>%
+  summarize(bioA = mean(mean_bioA),
+            maxl2fc = mean(maxl2fc),
+            immediacy = mean(mean_immediacy)) %>%
+  ungroup %>%
+  left_join(genome_feat.sum, by = "BinID") %>%
+  tidyr::gather(key="feature", value="feat_quant", -BinID, -bioA, -maxl2fc, -immediacy) %>%
+  mutate(Treatment = factor(gsub("Acid", " Acid", gsub("Day", "Day ", gsub("Day0", "Day", gsub("_", " ", gsub("_bin.*", "", BinID))))),
+                            levels = treatment_levels)) %>%
+  arrange(Treatment, BinID)
+
+Potential_matching_OTUs.means = Potential_matching_OTUs.means %>%
+  mutate(BinID = factor(BinID, levels = unique(Potential_matching_OTUs.means$BinID)))
+
+```
+
+```{r, message = FALSE, warning=FALSE}
+library(grid)
+library(gridExtra)
+
+# Functions
+compare_features <- function(feat, full_char_feat.sum){
+  char_feat.sum = full_char_feat.sum %>%
+    filter(feature == feat)
+  
+  bioA_feat.cor = cor.test(char_feat.sum$feat_quant, char_feat.sum$bioA)
+  maxl2fc_feat.cor = cor.test(char_feat.sum$feat_quant, char_feat.sum$maxl2fc)
+  immed_feat.cor = cor.test(char_feat.sum$feat_quant, char_feat.sum$immediacy)
+  
+  char_feat_cor.df = data.frame(feature = feat,
+                                AC_character = c("bioA", "maxl2fc", "immediacy"),
+                                pear_r = c(bioA_feat.cor$estimate, maxl2fc_feat.cor$estimate, immed_feat.cor$estimate),
+                                t_stat = c(bioA_feat.cor$statistic, maxl2fc_feat.cor$statistic, immed_feat.cor$statistic),
+                                df = c(bioA_feat.cor$parameter, maxl2fc_feat.cor$parameter, immed_feat.cor$parameter),
+                                pvalue = c(bioA_feat.cor$p.value, maxl2fc_feat.cor$p.value, immed_feat.cor$p.value)) %>%
+    mutate(adj_pvalue = p.adjust(pvalue, method = "BH", n = 8))
+  return(char_feat_cor.df)
+}
+
+make_feature_plots <- function(feat, full_char_feat.sum, char_feat_cor.df, pvcutoff, y_axis, usetheme=master_theme){
+  char_feat.sum = full_char_feat.sum %>%
+    filter(feature == feat)
+  
+  bioA.plot = ggplot(data=char_feat.sum, aes(x=bioA, y=feat_quant, fill=Treatment)) +
+    geom_smooth(method="lm", color=ifelse(filter(char_feat_cor.df, AC_character == "bioA")$adj_pvalue < pvcutoff, "red", "grey"),
+                fill=ifelse(filter(char_feat_cor.df, AC_character == "bioA")$adj_pvalue < pvcutoff, "red", "grey")) +
+    geom_point(shape=21) +
+    scale_fill_manual(values=treatment.col) +
+    usetheme
+  
+  maxl2fc.plot = ggplot(data=char_feat.sum, aes(x=maxl2fc, y=feat_quant, fill=Treatment)) +
+    geom_smooth(method="lm", color=ifelse(filter(char_feat_cor.df, AC_character == "maxl2fc")$adj_pvalue < pvcutoff, "red", "grey"),
+                fill=ifelse(filter(char_feat_cor.df, AC_character == "maxl2fc")$adj_pvalue < pvcutoff, "red", "grey")) +
+    geom_point(shape=21) +
+    scale_fill_manual(values=treatment.col) +
+    usetheme
+  
+  immed.plot = ggplot(data=char_feat.sum, aes(x=immediacy, y=feat_quant, fill=Treatment)) +
+    geom_smooth(method="lm", color=ifelse(filter(char_feat_cor.df, AC_character == "immediacy")$adj_pvalue < pvcutoff, "red", "grey"),
+                fill=ifelse(filter(char_feat_cor.df, AC_character == "immediacy")$adj_pvalue < pvcutoff, "red", "grey")) +
+    geom_point(shape=21) +
+    scale_fill_manual(values=treatment.col) +
+    usetheme
+  
+  # make limits the same across
+  scaleFUN <- function(x) sprintf("%.2f", x)
+  ylim.list = c(ggplot_build(bioA.plot)$layout$panel_scales_y[[1]]$range$range,
+                ggplot_build(maxl2fc.plot)$layout$panel_scales_y[[1]]$range$range,
+                ggplot_build(immed.plot)$layout$panel_scales_y[[1]]$range$range)
+  add_lims = scale_y_continuous(labels=scaleFUN, limits = c(min(ylim.list), max(ylim.list)))
+
+  y.grob <- textGrob(y_axis, gp=gpar(fontsize=8), rot=90)
+
+  comb.plot = grid.arrange(arrangeGrob(cowplot::plot_grid(bioA.plot + add_lims, 
+                                                          maxl2fc.plot + add_lims, 
+                                                          immed.plot + add_lims, 
+                                                          nrow=1, align = "h"),  left=y.grob))
+  return(comb.plot)
+  
+}
+master_theme = theme_bw() + 
+  theme(axis.text = element_text(size=7),
+        axis.title = element_blank(),
+        legend.position = "none",
+        plot.margin = margin(2,2,0,2, unit="mm"))
+```
+
+### Means across OTUs
+```{r, message = FALSE, warning=FALSE}
+# Number of chemotaxis genes
+char_chemotax_cor.df = compare_features("perc_chemotaxis", Potential_matching_OTUs.means)
+kable(char_chemotax_cor.df)
+char_chemotax.plot = make_feature_plots("perc_chemotaxis", Potential_matching_OTUs.means, char_chemotax_cor.df, 0.05, "MCP\ngene abundance (%)", usetheme=master_theme)
+
+
+# Number of transporters
+char_transport_cor.df = compare_features("perc_transport", Potential_matching_OTUs.means)
+kable(char_transport_cor.df)
+char_transport.plot = make_feature_plots("perc_transport", Potential_matching_OTUs.means, char_transport_cor.df, 0.05, "Transporter\ngene abundance (%)", usetheme=master_theme)
+
+
+# Number of transcription factors
+char_transfact_cor.df = compare_features("perc_transfact", Potential_matching_OTUs.means)
+kable(char_transfact_cor.df)
+char_transfact.plot = make_feature_plots("perc_transfact", Potential_matching_OTUs.means, char_transfact_cor.df, 0.05, "Transcription factor\ngene abundance (%)", usetheme=master_theme)
+
+
+# Number of osmotic stress response genes
+char_osmostress_cor.df = compare_features("perc_osmostress", Potential_matching_OTUs.means)
+kable(char_osmostress_cor.df)
+char_osmostress.plot = make_feature_plots("perc_osmostress", Potential_matching_OTUs.means, char_osmostress_cor.df, 0.05, "Osmotic Stress\ngene abundance (%)", usetheme=master_theme)
+
+
+# Number of dormancy genes
+char_dormancy_cor.df = compare_features("perc_dormancy", Potential_matching_OTUs.means)
+kable(char_dormancy_cor.df)
+char_dormancy.plot = make_feature_plots("perc_dormancy", Potential_matching_OTUs.means, char_dormancy_cor.df, 0.05, "Dormancy\ngene abundance (%)", usetheme=master_theme)
+
+
+# Number of secreted enzymes
+char_secenzy_cor.df = compare_features("perc_secenzy", Potential_matching_OTUs.means)
+kable(char_secenzy_cor.df)
+char_secenzy.plot = make_feature_plots("perc_secenzy", Potential_matching_OTUs.means, char_secenzy_cor.df, 0.05, "Secreted enzyme\ngene abundance (%)", usetheme=master_theme)
+
+
+# Number of adhesion proteins
+char_adhesion_cor.df = compare_features("perc_adhesion", Potential_matching_OTUs.means)
+kable(char_adhesion_cor.df)
+char_adhesion.plot = make_feature_plots("perc_adhesion", Potential_matching_OTUs.means, char_adhesion_cor.df, 0.05, "Adhesion\ngene abundance (%)", usetheme=master_theme)
+
+
+# Number of SMBCs
+char_SMBCs_cor.df = compare_features("rel_n_SMBCs", Potential_matching_OTUs.means)
+kable(char_SMBCs_cor.df)
+char_SMBCs.plot = make_feature_plots("rel_n_SMBCs", Potential_matching_OTUs.means, char_SMBCs_cor.df, 0.05, "SMBC\nabundance", usetheme=master_theme)
+
+```
+
+Combine figure
+```{r, message = FALSE, warning=FALSE, fig.width=7, fig.height=10}
+label.df = data.frame(label = factor(c("Mean C source bioavailability", "Mean maximum log2 fold change", "Mean C assimilation latency"),
+                                     levels = c("Mean C source bioavailability", "Mean maximum log2 fold change", "Mean C assimilation latency")),
+                      x = 0, y=0)
+label.plot = ggplot(data=label.df, aes(x=x, y=y, label=label)) +
+  #geom_text(size=9*5/14) +
+  theme(axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        plot.margin = margin(0, 0, 0, 30),
+        strip.text = element_text(size=8),
+        strip.background = element_blank()) +
+  facet_wrap(~label)
+
+leg.plot = ggplot(data=Potential_matching_OTUs.means, aes(x=feat_quant, y=bioA, fill=Treatment)) +
+  geom_point(shape=21) +
+  labs(fill="Treatment") +
+  scale_fill_manual(values = treatment.col) +
+  theme_bw() +
+  theme(legend.position="bottom",
+        legend.text = element_text(size=7),
+        legend.title = element_blank())
+
+treatment.leg = g_legend(leg.plot)
+
+full_cor.plot = cowplot::plot_grid(char_chemotax.plot, char_transport.plot, char_adhesion.plot,
+                                   char_transfact.plot, char_osmostress.plot, char_dormancy.plot,
+                                   char_secenzy.plot, char_SMBCs.plot, label.plot, treatment.leg,
+                                   ncol=1, rel_heights = c(1,1,1,1,1,1,1,1,0.25,0.6))
+full_cor.plot
+
+ggsave(full_cor.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS8.tiff", 
+       device = "tiff", width = 7, height = 10, units = "in")
+```
+
+Main figure
+```{r, message = FALSE, warning=FALSE, fig.width=7.08661, fig.height=2}
+# Transporters
+transport_bioA.plot = ggplot(data=filter(Potential_matching_OTUs.means, feature == "perc_transport"), aes(x=bioA, y=feat_quant, fill=Treatment)) +
+  geom_smooth(method="lm", color=ifelse(filter(char_transport_cor.df, AC_character == "bioA")$adj_pvalue < 0.05, "red", "grey"),
+              fill=ifelse(filter(char_transport_cor.df, AC_character == "bioA")$adj_pvalue < 0.05, "red", "grey")) +
+  geom_point(shape=21) +
+  scale_fill_manual(values = treatment.col) +
+  labs(x="Mean C source bioavailability", y="Membrane transporter\ngene abundance (%)") +
+  theme_bw() +
+  theme(axis.text = element_text(size=5),
+        axis.title = element_text(size=6),
+        axis.ticks = element_line(size=0.2),
+        legend.position="none",
+        legend.text = element_text(size=5),
+        legend.title = element_blank())
+
+transport_bioA.plot = transport_bioA.plot + 
+  annotate("text", label=paste("r = ", round(filter(char_transport_cor.df, AC_character == "bioA")$pear_r, digits=3),
+                               "0\tp-value = ", round(filter(char_transport_cor.df, AC_character == "bioA")$adj_pvalue, digits=3), sep=""),
+           x=(ggplot_build(transport_bioA.plot)$layout$panel_scales_x[[1]]$range$range[2] - ggplot_build(transport_bioA.plot)$layout$panel_scales_x[[1]]$range$range[1])*0.0 + ggplot_build(transport_bioA.plot)$layout$panel_scales_x[[1]]$range$range[1], 
+           y=(ggplot_build(transport_bioA.plot)$layout$panel_scales_y[[1]]$range$range[2] - ggplot_build(transport_bioA.plot)$layout$panel_scales_y[[1]]$range$range[1])*0.9 + ggplot_build(transport_bioA.plot)$layout$panel_scales_y[[1]]$range$range[1], hjust=0, size=6*5/14)
+
+# Transcription factors
+transfact_bioA.plot = ggplot(data=filter(Potential_matching_OTUs.means, feature == "perc_transfact"), aes(x=bioA, y=feat_quant, fill=Treatment)) +
+  geom_smooth(method="lm", color=ifelse(filter(char_transfact_cor.df, AC_character == "bioA")$adj_pvalue < 0.05, "red", "grey"),
+              fill=ifelse(filter(char_transfact_cor.df, AC_character == "bioA")$adj_pvalue < 0.05, "red", "grey")) +
+  geom_point(shape=21) +
+  scale_fill_manual(values = treatment.col) +
+  labs(x="Mean C source bioavailability", y="Transcription facotr\ngene abundance (%)") +
+  theme_bw() +
+  theme(axis.text = element_text(size=5),
+        axis.title = element_text(size=6),
+        axis.ticks = element_line(size=0.2),
+        legend.position="none",
+        legend.text = element_text(size=5),
+        legend.title = element_blank())
+
+transfact_bioA.plot = transfact_bioA.plot + 
+  annotate("text", label=paste("r = ", round(filter(char_transfact_cor.df, AC_character == "bioA")$pear_r, digits=3),
+                               "\tp-value < 0.001", sep=""),
+           x=(ggplot_build(transfact_bioA.plot)$layout$panel_scales_x[[1]]$range$range[2] - ggplot_build(transfact_bioA.plot)$layout$panel_scales_x[[1]]$range$range[1])*0.0 + ggplot_build(transfact_bioA.plot)$layout$panel_scales_x[[1]]$range$range[1], 
+           y=(ggplot_build(transfact_bioA.plot)$layout$panel_scales_y[[1]]$range$range[2] - ggplot_build(transfact_bioA.plot)$layout$panel_scales_y[[1]]$range$range[1])*0.9 + ggplot_build(transfact_bioA.plot)$layout$panel_scales_y[[1]]$range$range[1], hjust=0, size=6*5/14)
+
+# SMBCs
+SMBCs_bioA.plot = ggplot(data=filter(Potential_matching_OTUs.means, feature == "rel_n_SMBCs"), aes(x=bioA, y=feat_quant, fill=Treatment)) +
+  geom_smooth(method="lm", color=ifelse(filter(char_SMBCs_cor.df, AC_character == "bioA")$adj_pvalue < 0.05, "red", "grey"),
+              fill=ifelse(filter(char_SMBCs_cor.df, AC_character == "bioA")$adj_pvalue < 0.05, "red", "grey")) +
+  geom_point(shape=21) +
+  scale_fill_manual(values = treatment.col) +
+  labs(x="Mean C source bioavailability", y="SMBC abundance") +
+  theme_bw() +
+  theme(axis.text = element_text(size=5),
+        axis.title = element_text(size=6),
+        axis.ticks = element_line(size=0.2),
+        legend.position="bottom",
+        legend.text = element_text(size=5),
+        legend.title = element_blank())
+
+SMBCs_bioA.plot = SMBCs_bioA.plot + 
+  annotate("text", label=paste("r = ", round(filter(char_SMBCs_cor.df, AC_character == "bioA")$pear_r, digits=3),
+                               "\tp-value = ", round(filter(char_SMBCs_cor.df, AC_character == "bioA")$adj_pvalue, digits=3), sep=""),
+           x=(ggplot_build(SMBCs_bioA.plot)$layout$panel_scales_x[[1]]$range$range[2] - ggplot_build(SMBCs_bioA.plot)$layout$panel_scales_x[[1]]$range$range[1])*0.0 + ggplot_build(SMBCs_bioA.plot)$layout$panel_scales_x[[1]]$range$range[1], 
+           y=(ggplot_build(SMBCs_bioA.plot)$layout$panel_scales_y[[1]]$range$range[2] - ggplot_build(SMBCs_bioA.plot)$layout$panel_scales_y[[1]]$range$range[1])*0.9 + ggplot_build(SMBCs_bioA.plot)$layout$panel_scales_y[[1]]$range$range[1], hjust=0, size=6*5/14)
+
+treatment.leg = g_legend(SMBCs_bioA.plot)
+
+# Combine together
+ABC_main.plot = cowplot::plot_grid(transport_bioA.plot, transfact_bioA.plot, SMBCs_bioA.plot + theme(legend.position="none"), ncol=3, labels = c("a", "b", "c"), label_size = 7)
+main.plot = cowplot::plot_grid(ABC_main.plot, treatment.leg, nrow=2, rel_heights = c(1, 0.3))
+
+main.plot
+
+ggsave(main.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/Fig2.tiff", 
+       device = "tiff", width = 7.08661, height = 2, units = "in")
+```
+
+## Supplemental figures
+
+Compare transcription factor abundance to genome size
+```{r, message = FALSE, warning=FALSE, fig.width=3.46457, fig.height=3.46457}
+transfact_vs_size.df = qual_bin_annotation.sum %>%
+  select(BinID, size) %>%
+  inner_join(filter(Potential_matching_OTUs.means, feature == "perc_transfact"), by = "BinID")
+
+transfact_vs_size.cor = cor.test(transfact_vs_size.df$size, transfact_vs_size.df$feat_quant)
+
+transfact_vs_size.plot = ggplot(data=transfact_vs_size.df, aes(x=size/1000000, y=feat_quant, fill=Treatment)) +
+  geom_smooth(method="lm", color="grey", fill="grey") +
+  geom_point(shape=21) +
+  scale_fill_manual(values = treatment.col) +
+  labs(x="MAG size (Mbp)", y="Transcription facotr\ngene abundance (%)") +
+  theme_bw() +
+  theme(axis.text = element_text(size=7),
+        axis.title = element_text(size=8),
+        axis.ticks = element_line(size=0.2),
+        legend.position="bottom",
+        legend.text = element_text(size=7),
+        legend.title = element_blank()) +
+  guides(fill = guide_legend(ncol=2))
+
+transfact_vs_size.plot = transfact_vs_size.plot + 
+  annotate("text", label=paste("r = ", round(transfact_vs_size.cor$estimate, digits=3),
+                               "\tp-value = ", round(transfact_vs_size.cor$p.value, digits=3), sep=""),
+           x=(ggplot_build(transfact_vs_size.plot)$layout$panel_scales_x[[1]]$range$range[2] - ggplot_build(transfact_vs_size.plot)$layout$panel_scales_x[[1]]$range$range[1])*0.0 + ggplot_build(transfact_vs_size.plot)$layout$panel_scales_x[[1]]$range$range[1], 
+           y=(ggplot_build(transfact_vs_size.plot)$layout$panel_scales_y[[1]]$range$range[2] - ggplot_build(transfact_vs_size.plot)$layout$panel_scales_y[[1]]$range$range[1])*0.9 + ggplot_build(transfact_vs_size.plot)$layout$panel_scales_y[[1]]$range$range[1], hjust=0, size=6*5/14)
+
+transfact_vs_size.plot
+
+```
+
+Get MAG summaries
+```{r, message = FALSE, warning=FALSE}
+MAG_summaries_forSUPP.df = full_join(qual_bin_annotation.sum %>%
+                                       rename(CheckM_lineage = lineage) %>%
+                                       select(BinID, completeness, contamination, GC, CheckM_lineage, N50, size),
+                                     bin_tax.df %>%
+                                       select(BinID, Domain, Phylum, Class, Order, Family, Genus, Species),
+                                     by = "BinID") %>%
+  full_join(genome_feat.sum %>%
+              select(BinID, total_genes, n_chemotaxis, n_transport, n_transfact, n_osmostress, n_dormancy, n_secenzy, n_adhesion, n_SMBCs),
+            by = "BinID") %>%
+  full_join(Potential_matching_OTUs.means %>%
+              select(BinID, Treatment, bioA, maxl2fc, immediacy) %>%
+              unique, by = "BinID") %>%
+  select(BinID, Treatment, Domain, Phylum, Class, Order, Family, Genus, Species,
+         completeness, contamination, GC, CheckM_lineage, N50, size, 
+         total_genes, n_chemotaxis, n_transport, n_transfact, n_osmostress, n_dormancy, n_secenzy, n_adhesion, n_SMBCs,
+         bioA, maxl2fc, immediacy)
+
+kable(MAG_summaries_forSUPP.df)
+
+write.table(MAG_summaries_forSUPP.df, file="/home/sam/FullCyc_metagenome/figs4publication/SupplData_MAG_summaries.txt", sep="\t", quote=FALSE, row.names = FALSE)
+
+```
+
+MAG correlations
+```{r, message = FALSE, warning=FALSE}
+SupplData_MAGcors.df = rbind(char_chemotax_cor.df, char_transport_cor.df, char_transfact_cor.df, char_osmostress_cor.df, 
+                             char_dormancy_cor.df, char_secenzy_cor.df, char_adhesion_cor.df, char_SMBCs_cor.df)
+
+write.table(SupplData_MAGcors.df, file="/home/sam/FullCyc_metagenome/figs4publication/SupplData_MAGcors.txt", sep="\t", quote=FALSE, row.names = FALSE)
+
+```
+
+Contig sharing across MAGs
+
+```{r, message = FALSE, warning=FALSE}
+contig_lengths.df = bin_contig_cov.df %>%
+  select(contigName, contigLen) %>%
+  unique
+
+# Shared contigs
+shared_matrix = matrix(nrow=27, ncol=27)
+colnames(shared_matrix) = unique(bins.df$BinID)
+rownames(shared_matrix) = unique(bins.df$BinID)
+for (bin1 in colnames(shared_matrix)){
+  for (bin2 in rownames(shared_matrix)){
+    shared_matrix[bin1,bin2] = length(intersect(bins.df[bins.df$BinID == bin1,]$contigName, bins.df[bins.df$BinID == bin2,]$contigName))
+  }
+}
+shared_matrix[upper.tri(shared_matrix, diag = TRUE)] = NA
+
+# Shared DNA lengths
+overlap_matrix = matrix(nrow=27, ncol=27)
+colnames(overlap_matrix) = unique(bins.df$BinID)
+rownames(overlap_matrix) = unique(bins.df$BinID)
+for (bin1 in colnames(overlap_matrix)){
+  for (bin2 in rownames(overlap_matrix)){
+    shared_contigs.list = intersect(bins.df[bins.df$BinID == bin1,]$contigName, bins.df[bins.df$BinID == bin2,]$contigName)
+    overlap_matrix[bin1,bin2] = sum(filter(contig_lengths.df, contigName %in% shared_contigs.list)$contigLen)
+  }
+}
+overlap_matrix[upper.tri(overlap_matrix, diag = TRUE)] = NA
+
+# Make dataframe showing overlaps
+bin1_counts.df = bins.df %>%
+  left_join(contig_lengths.df, by="contigName") %>%
+  group_by(BinID) %>%
+  summarize(Bin_1_total = n(),
+            Bin_1_length = sum(contigLen)) %>%
+  rename(Bin_1 = BinID)
+
+bin2_counts.df = bins.df %>%
+  left_join(contig_lengths.df, by="contigName") %>%
+  group_by(BinID) %>%
+  summarize(Bin_2_total = n(),
+            Bin_2_length = sum(contigLen)) %>%
+  rename(Bin_2 = BinID)
+
+bin1_tax.df = bin_tax_full.df %>%
+  select(BinID, classification) %>%
+  rename(Bin_1 = BinID, Bin_1_tax = classification)
+bin2_tax.df = bin_tax_full.df %>%
+  select(BinID, classification) %>%
+  rename(Bin_2 = BinID, Bin_2_tax = classification)
+
+shared_contigs.df = shared_matrix %>%
+  as.data.frame %>%
+  tibble::rownames_to_column(var="Bin_1") %>%
+  tidyr::gather(key="Bin_2", value="n_contigs_shared", -Bin_1) %>%
+  filter(!is.na(n_contigs_shared), n_contigs_shared > 0)
+
+shared_lengths.df = overlap_matrix %>%
+  as.data.frame %>%
+  tibble::rownames_to_column(var="Bin_1") %>%
+  tidyr::gather(key="Bin_2", value="length_shared", -Bin_1) %>%
+  filter(!is.na(length_shared), length_shared > 0)
+
+MAG_overlap.df = full_join(shared_contigs.df, shared_lengths.df, by = c("Bin_1", "Bin_2")) %>%
+  left_join(bin1_counts.df, by="Bin_1") %>%
+  left_join(bin2_counts.df, by="Bin_2") %>%
+  mutate(Bin_1_shared_contig_perc = (n_contigs_shared/Bin_1_total)*100,
+         Bin_1_shared_length_perc = (length_shared/Bin_1_length)*100,
+         Bin_2_shared_contig_perc = (n_contigs_shared/Bin_2_total)*100,
+         Bin_2_shared_length_perc = (length_shared/Bin_2_length)*100) %>%
+  left_join(bin1_tax.df, by="Bin_1") %>%
+  left_join(bin2_tax.df, by="Bin_2") %>%
+  arrange(-Bin_1_shared_contig_perc, -Bin_2_shared_contig_perc) %>%
+  mutate(tax_shared = ifelse(Bin_1_tax == Bin_2_tax, "Same", "Different")) %>%
+  select(Bin_1, Bin_2, n_contigs_shared, length_shared, Bin_1_shared_contig_perc, Bin_1_shared_length_perc, Bin_2_shared_contig_perc, Bin_2_shared_length_perc, tax_shared)
+
+kable(MAG_overlap.df)
+
+write.table(MAG_overlap.df, file="/home/sam/FullCyc_metagenome/figs4publication/SupplData_MAGoveralap.txt", sep="\t", quote=FALSE, row.names = FALSE)
+
+
+```
+
+# Session info
+```{r, message = FALSE, warning=FALSE}
+sessionInfo()
+```
