@@ -1,0 +1,14 @@
+screen -S samtools_sort samtools sort --threads 1 -o Control_Day1_mapped.sorted.bam Control_Day1_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o Control_Day6_mapped.sorted.bam Control_Day6_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o Control_Day14_mapped.sorted.bam Control_Day14_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o Control_Day30_mapped.sorted.bam Control_Day30_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o Control_Day48_mapped.sorted.bam Control_Day48_mapped.bam
+
+screen -S samtools_sort samtools sort --threads 1 -o Glucose_Day1_mapped.sorted.bam Glucose_Day1_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o Xylose_Day6_mapped.sorted.bam Xylose_Day6_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o Glucose_Day14_mapped.sorted.bam Glucose_Day14_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o Glycerol_Day14_mapped.sorted.bam Glycerol_Day14_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o Cellulose_Day30_mapped.sorted.bam Cellulose_Day30_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o PalmiticAcid_Day30_mapped.sorted.bam PalmiticAcid_Day30_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o PalmiticAcid_Day48_mapped.sorted.bam PalmiticAcid_Day48_mapped.bam
+screen -S samtools_sort samtools sort --threads 1 -o Vanillin_Day48_mapped.sorted.bam Vanillin_Day48_mapped.bam

@@ -1,0 +1,29 @@
+java -ea -Xmx54435m -Xms54435m -cp /home/sam/anaconda3/envs/FullCyc_metagenome/opt/bbmap-38.67-0/current/ align2.BBMap build=1 overwrite=true fastareadlen=500 ref=../contigs/assembly.contigs.1000.fasta
+Executing align2.BBMap [build=1, overwrite=true, fastareadlen=500, ref=../contigs/assembly.contigs.1000.fasta]
+Version 38.67
+
+No output file.
+Writing reference.
+Executing dna.FastaToChromArrays2 [../contigs/assembly.contigs.1000.fasta, 1, writeinthread=false, genscaffoldinfo=true, retain, waitforwriting=false, gz=true, maxlen=536670912, writechroms=true, minscaf=1, midpad=300, startpad=8000, stoppad=8000, nodisk=false]
+
+Set genScaffoldInfo=true
+Writing chunk 1
+Writing chunk 2
+Writing chunk 3
+Writing chunk 4
+Writing chunk 5
+Set genome to 1
+
+Loaded Reference:	1.160 seconds.
+Loading index for chunk 1-5, build 1
+No index available; generating from reference genome: /home/sam/FullCyc_metagenome/alignments_1000k/ref/index/1/chr4-5_index_k13_c2_b1.block
+No index available; generating from reference genome: /home/sam/FullCyc_metagenome/alignments_1000k/ref/index/1/chr1-3_index_k13_c2_b1.block
+Indexing threads started for block 4-5
+Indexing threads started for block 0-3
+Indexing threads finished for block 4-5
+Indexing threads finished for block 0-3
+Generated Index:	214.058 seconds.
+Finished Writing:	6.429 seconds.
+No reads to process; quitting.
+
+Total time:     	244.592 seconds.

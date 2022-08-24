@@ -1,0 +1,21 @@
+(base) [01;32msam@doe-sys76[00m:[01;34m~/FullCyc_metagenome/alignments_1000k[00m$ ls
+Cellulose_Day30_mapped.log          Control_Day6_mapped.log           PalmiticAcid_Day30_mapped.sorted.bam
+Cellulose_Day30_mapped.sorted.bam   Control_Day6_mapped.sorted.bam    PalmiticAcid_Day48_mapped.log
+Control_Day14_mapped.log            Glucose_Day14_mapped.log          PalmiticAcid_Day48_mapped.sorted.bam
+Control_Day14_mapped.sorted.bam     Glucose_Day14_mapped.sorted.bam   [0m[01;34mref[0m
+Control_Day1_mapped.log             Glucose_Day1_mapped.log           screenlog.0
+Control_Day1_mapped.sorted.bam      Glucose_Day1_mapped.sorted.bam    sorting_command.txt
+Control_Day1_mapped.sorted.bam.bai  Glycerol_Day14_mapped.log         Vanillin_Day48_mapped.log
+Control_Day30_mapped.log            Glycerol_Day14_mapped.sorted.bam  Vanillin_Day48_mapped.sorted.bam
+Control_Day30_mapped.sorted.bam     indexing.log                      Xylose_Day6_mapped.log
+Control_Day48_mapped.log            mapping_command.txt               Xylose_Day6_mapped.sorted.bam
+Control_Day48_mapped.sorted.bam     PalmiticAcid_Day30_mapped.log
+(base) [01;32msam@doe-sys76[00m:[01;34m~/FullCyc_metagenome/alignments_1000k[00m$ fro [K[K[Kor i in *.sorted.bam
+> samtools index $i
+bash: syntax error near unexpected token `samtools'
+(base) [01;32msam@doe-sys76[00m:[01;34m~/FullCyc_metagenome/alignments_1000k[00m$ for i in *.sorted.bam; samtools index $ils[Kfor i in *.sorted.bam; samtools index $i[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K[K
+> do
+> samtools index $i
+> done
+(base) [01;32msam@doe-sys76[00m:[01;34m~/FullCyc_metagenome/alignments_1000k[00m$ [K(base) [01;32msam@doe-sys76[00m:[01;34m~/FullCyc_metagenome/alignments_1000k[00m$ ^C
+(base) [01;32msam@doe-sys76[00m:[01;34m~/FullCyc_metagenome/alignments_1000k[00m$ 

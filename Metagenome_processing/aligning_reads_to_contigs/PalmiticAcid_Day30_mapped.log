@@ -1,0 +1,80 @@
+java -ea -Xmx50742m -Xms50742m -cp /home/sam/anaconda3/envs/FullCyc_metagenome/opt/bbmap-38.67-0/current/ align2.BBMap build=1 overwrite=true fastareadlen=500 in=../reads/PalmiticAcid_Day30_reads.fastq.gz out=PalmiticAcid_Day30_mapped.bam threads=20 mappedonly=t
+Executing align2.BBMap [build=1, overwrite=true, fastareadlen=500, in=../reads/PalmiticAcid_Day30_reads.fastq.gz, out=PalmiticAcid_Day30_mapped.bam, threads=20, mappedonly=t]
+Version 38.67
+
+Set threads to 20
+Set OUTPUT_MAPPED_ONLY to true
+Retaining first best site only for ambiguous mappings.
+Set genome to 1
+
+Loaded Reference:	17.618 seconds.
+Loading index for chunk 1-5, build 1
+Generated Index:	49.936 seconds.
+Analyzed Index:   	7.489 seconds.
+Found samtools 1.9
+Started output stream:	0.631 seconds.
+Cleared Memory:    	7.706 seconds.
+Processing reads in paired-ended mode.
+Started read stream.
+Started 20 mapping threads.
+Detecting finished threads: 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
+
+   ------------------   Results   ------------------   
+
+Genome:                	1
+Key Length:            	13
+Max Indel:             	16000
+Minimum Score Ratio:  	0.56
+Mapping Mode:         	normal
+Reads Used:           	632500566	(94108249069 bases)
+
+Mapping:          	128922.548 seconds.
+Reads/sec:       	4906.05
+kBases/sec:      	729.96
+
+
+Pairing data:   	pct pairs	num pairs 	pct bases	   num bases
+
+mated pairs:     	 31.6101% 	 99967184 	 31.5199% 	 29662830734
+bad pairs:       	  3.8505% 	 12177244 	  3.8801% 	  3651476292
+insert size avg: 	  375.79
+
+
+Read 1 data:      	pct reads	num reads 	pct bases	   num bases
+
+mapped:          	 42.0900% 	133109749 	 42.0785% 	 19799666767
+unambiguous:     	 40.4786% 	128013601 	 40.4759% 	 19045580331
+ambiguous:       	  1.6114% 	  5096148 	  1.6026% 	   754086436
+low-Q discards:  	  0.0000% 	        0 	  0.0000% 	           0
+
+perfect best site:	 15.9355% 	 50396029 	 15.9322% 	  7496742894
+semiperfect site:	 16.7065% 	 52834419 	 16.7047% 	  7860271770
+rescued:         	  2.5645% 	  8110084
+
+Match Rate:      	      NA 	       NA 	 92.3569% 	 18444960151
+Error Rate:      	 60.3645% 	 80351119 	  6.7958% 	  1357223712
+Sub Rate:        	 60.1665% 	 80087528 	  5.8363% 	  1165599621
+Del Rate:        	  3.1538% 	  4198030 	  0.8598% 	   171719660
+Ins Rate:        	  3.2527% 	  4329637 	  0.0997% 	    19904431
+N Rate:          	  4.4671% 	  5946193 	  0.8472% 	   169202564
+
+
+Read 2 data:      	pct reads	num reads 	pct bases	   num bases
+
+mapped:          	 41.3659% 	130819764 	 41.3382% 	 19451311057
+unambiguous:     	 39.8135% 	125910289 	 39.7964% 	 18725829624
+ambiguous:       	  1.5524% 	  4909475 	  1.5418% 	   725481433
+low-Q discards:  	  0.0000% 	        0 	  0.0000% 	           0
+
+perfect best site:	 14.4515% 	 45703035 	 14.4357% 	  6792608135
+semiperfect site:	 15.1624% 	 47951262 	 15.1477% 	  7127603040
+rescued:         	  2.7644% 	  8742309
+
+Match Rate:      	      NA 	       NA 	 91.9599% 	 18089768467
+Error Rate:      	 63.4048% 	 82946039 	  7.1991% 	  1416165232
+Sub Rate:        	 63.2003% 	 82678589 	  5.9713% 	  1174640472
+Del Rate:        	  3.3313% 	  4358066 	  1.1187% 	   220061339
+Ins Rate:        	  3.4444% 	  4505922 	  0.1091% 	    21463421
+N Rate:          	  4.4481% 	  5819009 	  0.8410% 	   165438697
+
+Total time:     	129006.339 seconds.

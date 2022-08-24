@@ -1,0 +1,14 @@
+screen -L -S bbmap bbmap.sh in=../reads/Control_Day1_reads.fastq.gz out=Control_Day1_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/Control_Day6_reads.fastq.gz out=Control_Day6_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/Control_Day14_reads.fastq.gz out=Control_Day14_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/Control_Day30_reads.fastq.gz out=Control_Day30_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/Control_Day48_reads.fastq.gz out=Control_Day48_mapped.bam threads=20 mappedonly=t
+
+screen -L -S bbmap bbmap.sh in=../reads/Glucose_Day1_reads.fastq.gz out=Glucose_Day1_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/Xylose_Day6_reads.fastq.gz out=Xylose_Day6_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/Glucose_Day14_reads.fastq.gz out=Glucose_Day14_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/Glycerol_Day14_reads.fastq.gz out=Glycerol_Day14_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/Cellulose_Day30_reads.fastq.gz out=Cellulose_Day30_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/PalmiticAcid_Day30_reads.fastq.gz out=PalmiticAcid_Day30_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/PalmiticAcid_Day48_reads.fastq.gz out=PalmiticAcid_Day48_mapped.bam threads=20 mappedonly=t
+screen -L -S bbmap bbmap.sh in=../reads/Vanillin_Day48_reads.fastq.gz out=Vanillin_Day48_mapped.bam threads=20 mappedonly=t
