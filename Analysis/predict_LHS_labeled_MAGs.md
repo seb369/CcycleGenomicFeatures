@@ -28,44 +28,11 @@ of LHS using the MAGs as a training set.
 ``` r
 # Libraries
 library(dplyr)
-```
-
-    ## 
-    ## Attaching package: 'dplyr'
-
-    ## The following objects are masked from 'package:stats':
-    ## 
-    ##     filter, lag
-
-    ## The following objects are masked from 'package:base':
-    ## 
-    ##     intersect, setdiff, setequal, union
-
-``` r
 library(ggplot2)
 library(flexclust)
-```
-
-    ## Loading required package: grid
-
-    ## Loading required package: lattice
-
-    ## Loading required package: modeltools
-
-    ## Loading required package: stats4
-
-``` r
 library(kableExtra)
-```
 
-    ## 
-    ## Attaching package: 'kableExtra'
 
-    ## The following object is masked from 'package:dplyr':
-    ## 
-    ##     group_rows
-
-``` r
 # Legend extraction function
 g_legend<-function(a.gplot){
   tmp <- ggplot_gtable(ggplot_build(a.gplot))
@@ -2030,11 +1997,7 @@ transfact.sum = bin_annotation.df %>%
   group_by(BinID, total_genes) %>%
   summarize(n_transfact = n()) %>%
   ungroup
-```
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
-
-``` r
 TF.df = NULL
 ```
 
@@ -2055,11 +2018,7 @@ transport.sum = bin_annotation.df %>%
   group_by(BinID, total_genes) %>%
   summarize(n_transport = n()) %>%
   ungroup
-```
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
-
-``` r
 transmembrane.df = NULL
 ```
 
@@ -2089,11 +2048,7 @@ gram_pos_signalp.df = read.table("/home/sam/FullCyc_metagenome/annotation/signal
 
 signalp_full.df = full_join(gram_neg_signalp.df, gram_pos_signalp.df) %>%
   filter(geneID %in% unique(bin_annotation.df$geneID))
-```
 
-    ## Joining, by = c("geneID", "Scaffold")
-
-``` r
 gram_neg_signalp.df = NULL
 gram_pos_signalp.df = NULL
 ```
@@ -2167,11 +2122,7 @@ secenzy_SMBC.sum = bin_annotation.df %>%
   group_by(BinID, total_genes) %>%
   summarize(n_SEC_SMBC = n()) %>%
   ungroup
-```
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
-
-``` r
 antismash.df = NULL
 ```
 
@@ -5929,8 +5880,6 @@ RefSoil_features.sum = RefSoil_annotations.df %>%
          TFperGENE = n_transfact/total_genes)
 ```
 
-    ## `summarise()` has grouped output by 'RefSoil.ID', 'Taxa_short'. You can override using the `.groups` argument.
-
 ## Cluster genome LHS with heirarchical clustering
 
 This clustering method is independent of the MAGs and thus will change
@@ -6090,11 +6039,7 @@ hclust_RefSoil_features_groups.taxa_sum = RefSoil_features.hclust.groups %>%
   ungroup %>%
   mutate(perc_LHS = n_genomes/LHS_count*100,
          perc_Taxa = n_genomes/Taxa_count*100)
-```
 
-    ## `summarise()` has grouped output by 'Taxa_short', 'LHS', 'LHS_count'. You can override using the `.groups` argument.
-
-``` r
 hclust_RefSoil_LHSperTaxa.plot = ggplot(data=hclust_RefSoil_features_groups.taxa_sum, aes(x=Taxa_short, y=perc_Taxa)) +
   geom_bar(stat="identity", aes(fill=LHS)) +
   geom_text(data=unique(select(hclust_RefSoil_features_groups.taxa_sum, Taxa_short, Taxa_count)),
@@ -6284,11 +6229,7 @@ kmeans_RefSoil_features_groups.taxa_sum = RefSoil_features.kmeans.groups %>%
   ungroup %>%
   mutate(perc_LHS = n_genomes/LHS_count*100,
          perc_Taxa = n_genomes/Taxa_count*100)
-```
 
-    ## `summarise()` has grouped output by 'Taxa_short', 'LHS', 'LHS_count'. You can override using the `.groups` argument.
-
-``` r
 kmeans_RefSoil_LHSperTaxa.plot = ggplot(data=kmeans_RefSoil_features_groups.taxa_sum, aes(x=Taxa_short, y=perc_Taxa)) +
   geom_bar(stat="identity", aes(fill=LHS)) +
   geom_text(data=unique(select(kmeans_RefSoil_features_groups.taxa_sum, Taxa_short, Taxa_count)),
@@ -6437,11 +6378,7 @@ gram_pos_signalp.df = read.table("/home/sam/FullCyc_metagenome/annotation/signal
 
 signalp_full.df = full_join(gram_neg_signalp.df, gram_pos_signalp.df) %>%
   filter(geneID %in% unique(bin_annotation.df$geneID))
-```
 
-    ## Joining, by = c("geneID", "Scaffold")
-
-``` r
 gram_neg_signalp.df = NULL
 gram_pos_signalp.df = NULL
 ```
@@ -6458,11 +6395,8 @@ chemotaxis.sum = bin_annotation.df %>%
   summarize(n_chemotaxis = n()) %>%
   ungroup %>%
   mutate(perc_chemotaxis = n_chemotaxis/total_genes*100)
-```
+  
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
-
-``` r
 # Transport proteins
 transmembrane.df = read.table("/home/sam/FullCyc_metagenome/annotation/transmembrane/TMHMM_table_10_20_20.txt", sep="\t", header=TRUE)
 transport_grep_str = "transporter|channel|exchanger|symporter|antiporter|exporter|importer|ATPase|pump"
@@ -6478,11 +6412,7 @@ transport.sum = bin_annotation.df %>%
   summarize(n_transport = n()) %>%
   ungroup %>%
   mutate(perc_transport = n_transport/total_genes*100)
-```
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
-
-``` r
 # Adhesion proteins
 adhesion_products = c("holdfast attachment protein HfaA", "curli production assembly/transport component CsgG/holdfast attachment protein HfaB",
                       "adhesin/invasin", "fibronectin-binding autotransporter adhesin", "surface adhesion protein", "autotransporter adhesin",
@@ -6500,11 +6430,7 @@ adhesion.sum = bin_annotation.df %>%
   summarize(n_adhesion = n()) %>%
   ungroup %>%
   mutate(perc_adhesion = n_adhesion/total_genes*100)
-```
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
-
-``` r
 # Transcription factors
 transfact_grep_str = "transcriptional regulator|transcriptional repressor|transcriptional activator|transcription factor|transcriptional regulation|transcription regulator|transcriptional.*regulator"
 
@@ -6523,11 +6449,7 @@ transfact.sum = bin_annotation.df %>%
   summarize(n_transfact = n()) %>%
   ungroup %>%
   mutate(perc_transfact = n_transfact/total_genes*100)
-```
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
-
-``` r
 # Osmotic stress
 osmostress_grep_str = "osmoregulated|osmoprotectant|osmotically-inducible|osmo-dependent|osmolarity sensor|ompr|l-ectoine synthase"
 osmostress.sum = bin_annotation.df %>%
@@ -6540,11 +6462,7 @@ osmostress.sum = bin_annotation.df %>%
   summarize(n_osmostress = n()) %>%
   ungroup %>%
   mutate(perc_osmostress = n_osmostress/total_genes*100)
-```
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
-
-``` r
 # Dormancy
 #spore_grep_str = "Spo0A"
 resuscitation = "RpfC"
@@ -6559,11 +6477,8 @@ dormancy.sum = bin_annotation.df %>%
   summarize(n_dormancy = n()) %>%
   ungroup %>%
   mutate(perc_dormancy = n_dormancy/total_genes*100)
-```
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
 
-``` r
 # Secreted enzymes
 signalp_proteases.df = read.table("/home/sam/FullCyc_metagenome/annotation/secreted_protein_annotations/secreted_proteases.txt", sep="\t", stringsAsFactors = FALSE)
 colnames(signalp_proteases.df) = c("Query", "Target", "perc_ident", "align_length", "n_mismatch", "n_gaps", 
@@ -6583,11 +6498,7 @@ signalp_CAZymes.sum = signalp_CAZymes.df %>%
             max_E_value = max(E_value),
             min_E_value = min(E_value)) %>%
   filter(grepl("GH|PL|CE", Target))
-```
 
-    ## `summarise()` has grouped output by 'Query'. You can override using the `.groups` argument.
-
-``` r
 signalp_ABhydro.df = read.table("/home/sam/FullCyc_metagenome/annotation/secreted_protein_annotations/secreted_ABhydro.out.dm.ps.stringent", 
                                 sep="\t", stringsAsFactors = FALSE)
 colnames(signalp_ABhydro.df) = c("Target", "target_length", "Query", "query_length", "E_value", "V6", "V7", "V8", "V9", "V10")
@@ -6596,11 +6507,7 @@ signalp_ABhydro.sum = signalp_ABhydro.df %>%
   summarize(n_match = n(),
             max_E_value = max(E_value),
             min_E_value = min(E_value))
-```
 
-    ## `summarise()` has grouped output by 'Query'. You can override using the `.groups` argument.
-
-``` r
 secenzy.sum = bin_annotation.df %>%
   group_by(BinID) %>%
   mutate(total_genes = n()) %>%
@@ -6617,11 +6524,7 @@ secenzy.sum = bin_annotation.df %>%
   summarize(n_secenzy = n()) %>%
   ungroup %>%
   mutate(perc_secenzy = n_secenzy/total_genes*100)
-```
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
-
-``` r
 ## SMBCs
 antismash.df = read.table("/home/sam/FullCyc_metagenome/annotation/antismash/antismash_BCGtable.tsv", header=TRUE, sep="\t") %>%
   rename(smbc_product = product)
@@ -6637,11 +6540,7 @@ SMBC.sum = left_join(bin_annotation.df, antismash.df, by="Scaffold") %>%
   summarize(n_SMBCs = n()) %>%
   ungroup %>%
   mutate(rel_n_SMBCs = n_SMBCs/total_genes)
-```
 
-    ## `summarise()` has grouped output by 'BinID'. You can override using the `.groups` argument.
-
-``` r
 # Combine them all together
 genome_feat.sum = full_join(chemotaxis.sum, transport.sum, by = c("BinID", "total_genes")) %>%
   full_join(transfact.sum, by = c("BinID", "total_genes")) %>%
@@ -6882,7 +6781,7 @@ MAG_LHS_feat.plot
 
 ``` r
 ggsave(MAG_LHS_feat.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/Fig6.tiff", 
-       device = "tiff", width = 3.5, height = 5, units = "in")
+       device = "tiff", width = 3.5, height = 7, units = "in")
 ```
 
 ## RefSoil genomes
@@ -6903,11 +6802,7 @@ RefSoil_chemotaxis.sum = RefSoil_bact_annotations.df %>%
   ungroup %>%
   mutate(perc_chemotaxis = n_chemotaxis/total_genes*100) %>%
   select(RefSoil.ID, perc_chemotaxis)
-```
 
-    ## `summarise()` has grouped output by 'RefSoil.ID'. You can override using the `.groups` argument.
-
-``` r
 # Adhesion proteins
 RefSoil_adhesion.sum = RefSoil_bact_annotations.df %>%
   filter(grepl("adhesion|adhesin", product_lower) & n_TMH > 0) %>%
@@ -6916,11 +6811,8 @@ RefSoil_adhesion.sum = RefSoil_bact_annotations.df %>%
   ungroup %>%
   mutate(perc_adhesion = n_adhesion/total_genes*100) %>%
   select(RefSoil.ID, perc_adhesion)
-```
 
-    ## `summarise()` has grouped output by 'RefSoil.ID'. You can override using the `.groups` argument.
 
-``` r
 # Transport proteins
 RefSoil_transport.sum = RefSoil_bact_annotations.df %>%
   filter(grepl(transport_grep_str, product) & n_TMH > 0) %>%
@@ -6929,11 +6821,7 @@ RefSoil_transport.sum = RefSoil_bact_annotations.df %>%
   ungroup %>%
   mutate(perc_transport = n_transport/total_genes*100) %>%
   select(RefSoil.ID, perc_transport)
-```
 
-    ## `summarise()` has grouped output by 'RefSoil.ID'. You can override using the `.groups` argument.
-
-``` r
 # Transcription factors
 RefSoil_transfact.sum = RefSoil_bact_annotations.df %>%
   filter(grepl(transfact_grep_str, product_lower) | TF_prediction == "True") %>%
@@ -6942,11 +6830,7 @@ RefSoil_transfact.sum = RefSoil_bact_annotations.df %>%
   ungroup %>%
   mutate(perc_transfact = n_transfact/total_genes*100) %>%
   select(RefSoil.ID, perc_transfact)
-```
 
-    ## `summarise()` has grouped output by 'RefSoil.ID'. You can override using the `.groups` argument.
-
-``` r
 # Osmotic stress
 osmostress_grep_str = "osmoregulated|osmoprotectant|osmotically-inducible|osmo-dependent|osmolarity sensor|ompr|l-ectoine synthase"
 RefSoil_osmostress.sum = RefSoil_bact_annotations.df %>%
@@ -6956,11 +6840,7 @@ RefSoil_osmostress.sum = RefSoil_bact_annotations.df %>%
   ungroup %>%
   mutate(perc_osmostress = n_osmostress/total_genes*100) %>%
   select(RefSoil.ID, perc_osmostress)
-```
 
-    ## `summarise()` has grouped output by 'RefSoil.ID'. You can override using the `.groups` argument.
-
-``` r
 # Dormancy
 RefSoil_dormancy.sum = RefSoil_bact_annotations.df %>%
   filter(grepl(tox_antitox, product) | grepl(resuscitation, product)) %>%
@@ -6969,11 +6849,7 @@ RefSoil_dormancy.sum = RefSoil_bact_annotations.df %>%
   ungroup %>%
   mutate(perc_dormancy = n_dormancy/total_genes*100) %>%
   select(RefSoil.ID, perc_dormancy)
-```
 
-    ## `summarise()` has grouped output by 'RefSoil.ID'. You can override using the `.groups` argument.
-
-``` r
 # Secreted enzymes
 RefSoil_secenzy.sum = RefSoil_bact_annotations.df %>%
   select(RefSoil.ID, genome_file, total_genes) %>%
@@ -6988,11 +6864,7 @@ RefSoil_secenzy.sum = RefSoil_bact_annotations.df %>%
   ungroup %>%
   mutate(perc_secenzy = n_secenzy/total_genes*100) %>%
   select(RefSoil.ID, perc_secenzy)
-```
 
-    ## `summarise()` has grouped output by 'RefSoil.ID'. You can override using the `.groups` argument.
-
-``` r
 # SMBCs
 RefSoil_SMBC.sum = RefSoil_bact_annotations.df %>%
   select(RefSoil.ID, genome_file, total_genes) %>%
@@ -7005,11 +6877,7 @@ RefSoil_SMBC.sum = RefSoil_bact_annotations.df %>%
   ungroup %>%
   mutate(rel_n_SMBCs = n_SMBCs/total_genes) %>%
   select(RefSoil.ID, rel_n_SMBCs)
-```
-
-    ## `summarise()` has grouped output by 'RefSoil.ID'. You can override using the `.groups` argument.
-
-``` r
+  
 # Combine them all together
 RefSoil_genome_feat.sum = RefSoil_bact_annotations.df %>%
   select(RefSoil.ID, total_genes) %>%

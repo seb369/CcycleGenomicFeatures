@@ -14,7 +14,7 @@ The goal of this analysis is to use life history theory to classify bacterial MA
 We should also be able to do this to known genomes from RefSoil. I'll try two things. Simple clustering unrelated to the MAGs and predictions of LHS using the MAGs as a training set.
 
 ## Initialization
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Libraries
 library(dplyr)
 library(ggplot2)
@@ -64,7 +64,7 @@ First lets look at the life history strategies of the MAGs
 
 ## Data import and processing
 ### Bin IDs with quality from metaWRAP/checkM
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Import Bins qualities. There is a separate stats file for each run of metawrap (each treatment)
 bins_quality.df = data.frame()
 for (treat in treatment.list){
@@ -87,7 +87,7 @@ kable(bins_quality.df %>% arrange(-completeness))
 ```
 
 ### Contigs found in each bin
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Get list of contigs from each bin
 bins.df = data.frame()
 for (treat in treatment.list){
@@ -104,7 +104,7 @@ for (treat in treatment.list){
 ```
 
 ### Bin taxonomy from GTDBtk
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # I had to split up the GTDBtk runs so I need a list to get the directories where the results are from
 GTDBtk_directories = c("Glucose_Day01", "Xylose_Day06", "Glucose_Day14", "Glycerol_Day14", 
                        "Cellulose_Day30_S1", "Cellulose_Day30_S2", "Cellulose_Day30_S3", "Cellulose_Day30_S4",
@@ -134,7 +134,7 @@ bin_tax.df = bin_tax_full.df %>%
 
 ### Binned contig gene annotations
 I also need the annotations for the contigs found in the bins.
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Get mapping of contigs to IMG contig names
 scaffolds.df = read.table("/home/sam/FullCyc_metagenome/annotation/IMG/Ga0334612_contig_names_mapping.tsv", sep="\t", header=FALSE, stringsAsFactors = FALSE) %>%
   rename(contigName = V1, Scaffold = V2) %>%
@@ -159,7 +159,7 @@ scaffolds.df = NULL
 ## Get genome features of interest
 
 ### Transcription factor genes
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Transcription factors
 transfact_grep_str = "transcriptional regulator|transcriptional repressor|transcriptional activator|transcription factor|transcriptional regulation|transcription regulator|transcriptional.*regulator"
 
@@ -182,7 +182,7 @@ TF.df = NULL
 ```
 
 ### Transporter genes
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Transport proteins
 transmembrane.df = read.table("/home/sam/FullCyc_metagenome/annotation/transmembrane/TMHMM_table_10_20_20.txt", sep="\t", header=TRUE)
 transport_grep_str = "transporter|channel|exchanger|symporter|antiporter|exporter|importer|ATPase|pump"
@@ -206,7 +206,7 @@ transmembrane.df = NULL
 ### Secreted enzymes and SMBC genes
 
 First get the list of genes with predicted secretion signals.
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Import both gram + and gram - predictions
 gram_neg_signalp.df = read.table("/home/sam/FullCyc_metagenome/annotation/signalp_annotation/Ga0334612_proteins_gram_neg_summary.signalp5", 
                             sep="\t", quote="", header=TRUE, stringsAsFactors = FALSE, comment.char = "") %>%
@@ -235,7 +235,7 @@ gram_pos_signalp.df = NULL
 ```
 
 Next get the different enzyme annotations that contained a secrection signal and the genes contained within SMBCs
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Secreted enzymes
 signalp_proteases.df = read.table("/home/sam/FullCyc_metagenome/annotation/secreted_protein_annotations/secreted_proteases.txt", sep="\t", stringsAsFactors = FALSE)
 colnames(signalp_proteases.df) = c("Query", "Target", "perc_ident", "align_length", "n_mismatch", "n_gaps", 
@@ -307,7 +307,7 @@ antismash.df = NULL
 ```
 
 ### Combine all genome feature summaries
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Combine them all together
 genome_feat.sum = full_join(transport.sum, transfact.sum, by = c("BinID", "total_genes")) %>%
   full_join(secenzy_SMBC.sum, by = c("BinID", "total_genes"))
@@ -326,7 +326,7 @@ kable(MAG_feat.sum)
 
 Now lets use these genome features to cluster the MAGs into 3 LHS using heirarchical clustering.
 
-```{r, warning=FALSE, fig.height=5, fig.width=5}
+```{r, message = FALSE, warning=FALSE, fig.height=5, fig.width=5}
 # Use hclust with euclidean distances based on the two noted genome features to cluster the MAGs into LHS
 MAG_feat.mat = MAG_feat.sum %>%
   select(BinID, SECSMBCperMT, TFperGENE) %>%
@@ -367,7 +367,7 @@ MAG_feat.hclust.groups = full_join(MAG_feat.hclust.groups, hclust_LHS_groups, by
 ```
 
 Plot life history strategies
-```{r, warning=FALSE, fig.height=5, fig.width=5}
+```{r, message = FALSE, warning=FALSE, fig.height=5, fig.width=5}
 # Group plots
 hclust_TFperGENE.plot = ggplot(data=MAG_feat.hclust.groups, aes(x=total_genes, y=n_transfact)) +
   geom_point(aes(fill=LHS), shape = 21, size=2) +
@@ -410,7 +410,7 @@ cowplot::plot_grid(hclust_TFperGENE.plot + theme(legend.position = "none"),
 
 
 Plot LHS with taxonomies
-```{r, warning=FALSE, fig.height=5, fig.width=5}
+```{r, message = FALSE, warning=FALSE, fig.height=5, fig.width=5}
 # Taxa plots
 hclust_TFperGENE_Taxa.plot = ggplot(data=MAG_feat.hclust.groups, aes(x=total_genes, y=n_transfact)) +
   geom_point(aes(fill=Order, shape=LHS), size=3) +
@@ -460,7 +460,7 @@ hclust_LHS_Taxa.plot
 ## Cluster MAG LHS with k-means clustering
 
 Now lets use these genome features to cluster the MAGs into 3 LHS using k-means clustering.
-```{r, warning=FALSE, fig.height=5, fig.width=5}
+```{r, message = FALSE, warning=FALSE, fig.height=5, fig.width=5}
 set.seed(4242)
 MAG_feat.kmeans = kcca(scale(select(MAG_feat.sum, TFperGENE, SECSMBCperMT), center = TRUE), k=3, kccaFamily("kmeans"))
 MAG_feat.kmeans.groups = MAG_feat.sum %>%
@@ -486,7 +486,7 @@ MAG_feat.kmeans.groups = full_join(MAG_feat.kmeans.groups, kmeans_LHS_groups, by
 ```
 
 Plot life history strategies
-```{r, warning=FALSE, fig.height=5, fig.width=5}
+```{r, message = FALSE, warning=FALSE, fig.height=5, fig.width=5}
 # Group plots
 kmeans_TFperGENE.plot = ggplot(data=MAG_feat.kmeans.groups, aes(x=total_genes, y=n_transfact)) +
   geom_point(aes(fill=LHS, shape=LHS), size=2) +
@@ -534,7 +534,7 @@ cowplot::plot_grid(kmeans_TFperGENE.plot + theme(legend.position = "none"),
 ```
 
 Plot LHS with taxonomies
-```{r, warning=FALSE, fig.height=5, fig.width=5}
+```{r, message = FALSE, warning=FALSE, fig.height=5, fig.width=5}
 # Taxa plots
 kmeans_TFperGENE_Taxa.plot = ggplot(data=MAG_feat.kmeans.groups, aes(x=total_genes, y=n_transfact)) +
   geom_point(aes(fill=Order, shape=LHS), size=2) +
@@ -583,7 +583,7 @@ kmeans_LHS_Taxa.plot
 
 Adding 2 order regression curve
 
-```{r, warning=FALSE, fig.height=5, fig.width=5}
+```{r, message = FALSE, warning=FALSE, fig.height=5, fig.width=5}
 xx <- seq(min(MAG_feat.kmeans.groups$TFperGENE),
           max(MAG_feat.kmeans.groups$TFperGENE), 
           length=50)
@@ -609,7 +609,7 @@ fit2_LHS_Taxa.plot
 
 Publication quality figure 
 
-```{r, warning=FALSE, fig.height=5, fig.width=7}
+```{r, message = FALSE, warning=FALSE, fig.height=5, fig.width=7}
 kmeans_LHS_full.plot1 = cowplot::plot_grid(kmeans_TFperGENE.plot + theme(legend.position = "none"), 
                                       kmeans_SECSMBCperMT.plot + theme(legend.position = "none"), 
                                       kmeans_LHS.plot + theme(legend.position = "none"),
@@ -638,7 +638,7 @@ ggsave(kmeans_LHS_full.plot, filename = "/home/sam/FullCyc_metagenome/figs4publi
 ## Matching MAGs and their LHS to OTUs in FullCyc1 and guild features
 For this analysis I'm going to use the LHS from the kmeans clustering. Note however, that when I ran this with the hclust groups the results were similar.
 
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Dataframe for converting microcosm name into substrate and day
 treat_conversions = data.frame(Sub = c("13C-Glu", "13C-Xyl", "13C-Gly", "13C-Cel", "13C-Pal", "13C-Van", "13C-Oxa", "13C-Lac", "13C-Ami"),
                                Substrate = c("Glucose", "Xylose", "Glycerol", "Cellulose", "Palmitic acid", "Vanillin", "Oxalate", "Lactate", "Amino acids"))
@@ -648,7 +648,7 @@ FullCyc1_incorp.df = read.table("/home/sam/FullCyc_metagenome/OTU_AC_characteris
                                 sep="\t", header=TRUE, stringsAsFactors = FALSE)
 ```
 
-```{r}
+```{r, message = FALSE, warning=FALSE}
 treatment_levels = c("Glucose Day 1", "Xylose Day 6", "Glucose Day 14", "Glycerol Day 14", 
                      "Cellulose Day 30", "Palmitic Acid Day 30", "Palmitic Acid Day 48", "Vanillin Day 48")
 
@@ -746,7 +746,7 @@ print("Missing matching OTUs:\nCellulose_Day30_bin.7\nPalmiticAcid_Day48_bin.4\n
 ```
 
 
-```{r, warning=FALSE, fig.height=7, fig.width=3.5}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=3.5}
 # To make plotting easier I'm reassigning group numbers for LHS as they will appear on the figure. Note that this actually doesnt change the LHS number but it might if there is any stochasticity in the the clustering algorithm.
 LH.order = data.frame(LHS = factor(c("Competitor", "Scarcity", "Ruderal"),
                                    levels = c("Competitor", "Scarcity", "Ruderal")),
@@ -899,7 +899,7 @@ For this analysis I'll look at the same genomic features but in the RefSoil geno
 ## Data import and processing
 
 Metadata including taxonomy
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Metadata
 RefSoil_metadata.df = read.table("/home/sam/new_databases/RefSoil/RefSoil_genomes/RefSoil_metadata.txt", 
                                  sep="\t", header=TRUE, comment.char = "", quote = "", stringsAsFactors = FALSE) %>%
@@ -925,7 +925,7 @@ RefSoil_metadata.df = full_join(RefSoil_metadata.df, RefSoil_metadata.tax, by="T
 ```
 
 Genome annotations, tranmembrane domains, and transcription factor predictions
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Prokka annotations
 RefSoil_prokka.df = read.table("/home/sam/FullCyc_metagenome/Other_studies_comp/redo_analysis/full_study_files/RefSoil_annotations.txt", 
                                sep="\t", header=TRUE, comment.char = "", quote = "", stringsAsFactors = FALSE)
@@ -960,7 +960,7 @@ RefSoil_TFs.df = NULL
 ```
 
 Secreted enzymes and SMBC genes
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Secretion signal predictions
 gram_pos_genomes = filter(RefSoil_metadata.df, Phylum %in% c("Firmicutes", "Actinobacteria"))$genome_file
 gram_neg_genomes = filter(RefSoil_metadata.df, !(Phylum %in% c("Firmicutes", "Actinobacteria")))$genome_file
@@ -1035,7 +1035,7 @@ RefSoil_secenzy_SMBC.sum = full_join(RefSoil_proteases.df, RefSoil_CAZymes.df, b
 ```
 
 Put all annotations together and summarize features for each genome
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Get gene counts
 transport_grep_str = "transporter|channel|exchanger|symporter|antiporter|exporter|importer|ATPase|pump"
 transfact_grep_str = "transcriptional regulator|transcriptional repressor|transcriptional activator|transcriptional.*regulator|transcriptional.*repressor|transcriptional activation|transcription factor|transcription regulator|transcription repressor"
@@ -1061,7 +1061,7 @@ RefSoil_features.sum = RefSoil_annotations.df %>%
 ## Cluster genome LHS with heirarchical clustering
 This clustering method is independent of the MAGs and thus will change depending on which genomes are included in the analysis.
 
-```{r, warning=FALSE, fig.height=7, fig.width=7}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=7}
 RefSoil_features.mat = RefSoil_features.sum %>%
   select(RefSoil.ID, SECSMBCperMT, TFperGENE) %>%
   tibble::column_to_rownames(var="RefSoil.ID") %>%
@@ -1098,7 +1098,7 @@ RefSoil_features.hclust.groups = full_join(RefSoil_features.hclust.groups, hclus
 ```
 
 Plot life history strategies
-```{r, warning=FALSE, fig.height=7, fig.width=7}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=7}
 # Group plots
 hclust_RefSoil_TFperGENE.plot = ggplot(data=RefSoil_features.hclust.groups, aes(x=total_genes, y=n_transfact)) +
   geom_point(size=2, aes(fill=LHS), shape=21) +
@@ -1139,7 +1139,7 @@ cowplot::plot_grid(hclust_RefSoil_TFperGENE.plot + theme(legend.position = "none
 ```
 
 Plot life history strategies with taxonomy
-```{r, warning=FALSE, fig.height=7, fig.width=7}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=7}
 # Taxa plots
 hclust_RefSoil_TFperGENE_Taxa.plot = ggplot(data=RefSoil_features.hclust.groups, aes(x=total_genes, y=n_transfact)) +
   geom_point(aes(fill=Taxa_short, shape=LHS), size=3) +
@@ -1185,7 +1185,7 @@ hclust_RefSoil_LHS_Taxa.plot
 ```
 
 Summarize taxonomies for each life history strategy prediction
-```{r, warning=FALSE, fig.height=7, fig.width=7}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=7}
 hclust_RefSoil_features_groups.taxa_sum = RefSoil_features.hclust.groups %>%
   group_by(LHS) %>%
   mutate(LHS_count = n()) %>%
@@ -1222,7 +1222,7 @@ hclust_RefSoil_TaxaperLHS.plot
 ## Cluster genome LHS with k-means trained with MAGs
 This clustering method dependent of the MAG results. Thus the MAGs are used to predict these independent genomes.
 
-```{r}
+```{r, message = FALSE, warning=FALSE}
 set.seed(7242)
 RefSoil_features.kmeans <- predict(MAG_feat.kmeans, newdata=scale(select(RefSoil_features.sum, TFperGENE, SECSMBCperMT), center = TRUE))
 RefSoil_features.kmeans.groups = RefSoil_features.sum %>%
@@ -1231,7 +1231,7 @@ RefSoil_features.kmeans.groups = RefSoil_features.sum %>%
 ```
 
 Plot life history strategies
-```{r, warning=FALSE, fig.height=7, fig.width=7}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=7}
 # Group plots
 kmeans_RefSoil_TFperGENE.plot = ggplot(data=RefSoil_features.kmeans.groups, aes(x=total_genes, y=n_transfact)) +
   geom_point(aes(fill=LHS, shape=LHS), size=2) +
@@ -1275,7 +1275,7 @@ cowplot::plot_grid(kmeans_RefSoil_TFperGENE.plot + theme(legend.position = "none
 ```
 
 Plot life history strategies with taxonomy
-```{r, warning=FALSE, fig.height=7, fig.width=7}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=7}
 # Taxa plots
 kmeans_RefSoil_TFperGENE_Taxa.plot = ggplot(data=RefSoil_features.kmeans.groups, aes(x=total_genes, y=n_transfact)) +
   geom_point(aes(fill=Taxa_short, shape=LHS), size=2) +
@@ -1321,7 +1321,7 @@ kmeans_RefSoil_LHS_Taxa.plot
 ```
 
 Plot for publication
-```{r, warning=FALSE, fig.height=5, fig.width=7}
+```{r, message = FALSE, warning=FALSE, fig.height=5, fig.width=7}
 kmeans_RefSoil_LHS_full.plot1 = cowplot::plot_grid(kmeans_RefSoil_TFperGENE.plot + theme(legend.position = "none"), 
                                       kmeans_RefSoil_SMBCperMT.plot + theme(legend.position = "none"), 
                                       kmeans_RefSoil_LHS.plot + theme(legend.position = "none"),
@@ -1350,7 +1350,7 @@ ggsave(kmeans_RefSoil_LHS_full.plot, filename = "/home/sam/FullCyc_metagenome/fi
 
 
 Summarize taxonomies for each life history strategy prediction
-```{r, warning=FALSE, fig.height=7, fig.width=3.5}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=3.5}
 kmeans_RefSoil_features_groups.taxa_sum = RefSoil_features.kmeans.groups %>%
   group_by(LHS) %>%
   mutate(LHS_count = n()) %>%
@@ -1408,7 +1408,7 @@ ggsave(kmeans_RefSoil_LHS_full.plot, filename = "/home/sam/FullCyc_metagenome/fi
                -A hard to culture bugger: Acidobacteria, Verrucomicrobia, Planctomycetales, Gemmatamonidetes
                
                
-```{r}
+```{r, message = FALSE, warning=FALSE}
 
 SpecSpec_RefSoil_features.kmeans.groups = RefSoil_features.kmeans.groups %>%
   left_join(unique(select(RefSoil_metadata.df, RefSoil.ID, Kingdom, Phylum, Class, Order, Family, Genus, Species)),
@@ -1477,7 +1477,7 @@ ggplot(data=SpecSpec_RefSoil_features.kmeans.groups, aes(x=TFperGENE, y=SECSMBCp
 # More genomic features for life history strategy predictions
 
 ## MAGs
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Import both gram + and gram - predictions
 gram_neg_signalp.df = read.table("/home/sam/FullCyc_metagenome/annotation/signalp_annotation/Ga0334612_proteins_gram_neg_summary.signalp5", 
                             sep="\t", quote="", header=TRUE, stringsAsFactors = FALSE, comment.char = "") %>%
@@ -1505,7 +1505,7 @@ gram_pos_signalp.df = NULL
 
 ```
 
-```{r}
+```{r, message = FALSE, warning=FALSE}
 # Chemotaxis
 chemotaxis.sum = bin_annotation.df %>%
   group_by(BinID) %>%
@@ -1675,7 +1675,7 @@ genome_feat.sum[is.na(genome_feat.sum)] <- 0
   
 ```
 
-```{r, warning=FALSE, fig.height=7, fig.width=3.5}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=3.5}
 
 Feature.newnames = data.frame(feature = c("perc_chemotaxis", "perc_transport", "perc_transfact",
                                           "perc_osmostress", "perc_dormancy", "perc_secenzy", 
@@ -1714,7 +1714,7 @@ for (test_feat in unique(bin_LHS_feat.sum$feature_good)){
 ```
 
 For publication
-```{r, warning=FALSE, fig.height=7, fig.width=3.5}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=3.5}
 LHS_feat_plot_fun = function(summary.df, dunn.df, feat, ylabel){
   bin_LHS_feat.sum.plot = ggplot(data=filter(summary.df, feature_good == feat), aes(x=LHS, y=measure)) +
     geom_boxplot(outlier.shape = NA) +
@@ -1748,13 +1748,13 @@ MAG_LHS_feat.plot = cowplot::plot_grid(LHS_feat_plot_fun(bin_LHS_feat.sum, bin_L
 MAG_LHS_feat.plot
 
 ggsave(MAG_LHS_feat.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/Fig6.tiff", 
-       device = "tiff", width = 3.5, height = 5, units = "in")
+       device = "tiff", width = 3.5, height = 7, units = "in")
 ```
 
 
 ## RefSoil genomes
 
-```{r, warning=FALSE}
+```{r, message = FALSE, warning=FALSE}
 RefSoil_bact_annotations.df = RefSoil_annotations.df %>%
   filter(Kingdom == "Bacteria") %>%
   group_by(RefSoil.ID) %>%
@@ -1863,7 +1863,7 @@ RefSoil_genome_feat.sum[is.na(RefSoil_genome_feat.sum)] <- 0
 
 ```
 
-```{r, warning=FALSE, fig.height=7, fig.width=3.5}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=3.5}
 Feature.newnames = data.frame(feature = c("perc_chemotaxis", "perc_transport", "perc_transfact",
                                           "perc_osmostress", "perc_dormancy", "perc_secenzy", 
                                           "perc_adhesion", "rel_n_SMBCs"),
@@ -1903,7 +1903,7 @@ RefSoil_LHS_feat.dunn.df = RefSoil_LHS_feat.dunn.df %>%
 
 ```
 
-```{r, warning=FALSE, fig.height=7, fig.width=3.5}
+```{r, message = FALSE, warning=FALSE, fig.height=7, fig.width=3.5}
 LHS_feat_plot_fun = function(summary.df, dunn.df, feat, ylabel){
   bin_LHS_feat.sum.plot = ggplot(data=filter(summary.df, feature_good == feat), aes(x=LHS, y=measure)) +
     geom_boxplot(outlier.shape = 21) +
@@ -1943,7 +1943,7 @@ ggsave(Genome_LHS_feat.plot, filename = "/home/sam/FullCyc_metagenome/figs4publi
 
 
 # Session info
-```{r}
+```{r, message = FALSE, warning=FALSE}
 sessionInfo()
 ```
 
