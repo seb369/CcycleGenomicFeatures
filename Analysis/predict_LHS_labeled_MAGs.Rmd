@@ -1396,7 +1396,7 @@ kmeans_RefSoil_Taxa.plot = cowplot::plot_grid(kmeans_RefSoil_LHSperTaxa.plot,
                                               ncol=1, labels = c("a", "b"), label_size = 8)
 kmeans_RefSoil_Taxa.plot
 
-ggsave(kmeans_RefSoil_LHS_full.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS10.tiff", 
+ggsave(kmeans_RefSoil_Taxa.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS10.tiff", 
        device = "tiff", width = 3.5, height = 7, units = "in")
   
 ```

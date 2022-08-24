@@ -761,7 +761,7 @@ full.plot = cowplot::plot_grid(chemotax_full.plot, transport_full.plot, adhesion
                                rel_heights = c(1,1,1,1,1,1,1,1,0.25,0.6), label_size = 9)
 full.plot
 
-ggsave(full.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS5.tiff", 
+ggsave(full.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS6.tiff", 
        device = "tiff", width = 7, height = 10, units = "in")
 ```
 
@@ -884,7 +884,7 @@ all_comps_out.plot = ggplot(data=all_comps_out_tbl.df, aes(x=treatment, y=perc_f
 
 all_comps_out.plot
 
-ggsave(all_comps_out.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS6.tiff", 
+ggsave(all_comps_out.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS5.tiff", 
        device = "tiff", width = 3.5, height = 7, units = "in")
 ```
 

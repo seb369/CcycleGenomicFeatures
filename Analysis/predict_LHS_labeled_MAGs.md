@@ -1,7 +1,7 @@
 Predicting life history
 ================
 Samuel Barnett
-23 August, 2022
+24 August, 2022
 
 # Introduction
 
@@ -6266,7 +6266,7 @@ kmeans_RefSoil_Taxa.plot
 ![](predict_LHS_labeled_MAGs_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
 
 ``` r
-ggsave(kmeans_RefSoil_LHS_full.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS10.tiff", 
+ggsave(kmeans_RefSoil_Taxa.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS10.tiff", 
        device = "tiff", width = 3.5, height = 7, units = "in")
 ```
 

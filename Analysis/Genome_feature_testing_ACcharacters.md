@@ -2,7 +2,7 @@ Testing relationships between genomic features and C acquisition and
 growth characteristics in 13C-labeled contigs
 ================
 Samuel Barnett
-23 August, 2022
+24 August, 2022
 
 ## Introduction
 
@@ -933,7 +933,7 @@ full.plot
 ![](Genome_feature_testing_ACcharacters_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
 ``` r
-ggsave(full.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS5.tiff", 
+ggsave(full.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS6.tiff", 
        device = "tiff", width = 7, height = 10, units = "in")
 ```
 
@@ -1066,7 +1066,7 @@ all_comps_out.plot
 ![](Genome_feature_testing_ACcharacters_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
 
 ``` r
-ggsave(all_comps_out.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS6.tiff", 
+ggsave(all_comps_out.plot, filename = "/home/sam/FullCyc_metagenome/figs4publication/FigS5.tiff", 
        device = "tiff", width = 3.5, height = 7, units = "in")
 ```
 
