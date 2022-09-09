@@ -6,7 +6,7 @@ This repository contains the code used in the processing and analysis of the met
 
 The paper to which this analysis belongs is titled "Genomic features predict bacterial life history strategies in soil, as identified by metagenomic stable isotope probing" (DOI:TBD) and can be cited as:
 
-TBD
+Barnett, S.E., Egan, R., Foster, B., Eloe-Fadrosh, E.A., and Buckley, D.H. (2022) Genomic features predict bacterial life history strategies in soil, as identified by metagenomic stable isotope probing. bioRxiv 507310.
 
 ## Directories
 
